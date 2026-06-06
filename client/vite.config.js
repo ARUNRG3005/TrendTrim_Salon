@@ -6,6 +6,7 @@ import tailwindConfig from './tailwind.config.js'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react()],
   css: {
     postcss: {
