@@ -81,7 +81,7 @@ export default function Navigation() {
         <div className="flex items-center gap-4">
           <Link to="/home" className="flex items-center gap-3 select-none" style={{ textDecoration: 'none' }}>
             <img 
-              src="/favicon.svg" 
+              src={`${import.meta.env.BASE_URL}favicon.svg`} 
               alt="TrendTrim Logo" 
               className="w-20 h-20 transition-transform duration-500 hover:rotate-180 dark:invert drop-shadow-md" 
               style={{ flexShrink: 0 }} 
