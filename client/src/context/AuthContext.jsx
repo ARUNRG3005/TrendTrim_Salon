@@ -5,7 +5,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [guest, setGuest] = useState(() => {
-    return localStorage.getItem('luxebook_guest') === 'true';
+    return localStorage.getItem('trendtrim_guest') === 'true';
   });
   const [loading, setLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -13,12 +13,12 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check local storage for existing session
-    const storedUser = localStorage.getItem('luxebook_user');
+    const storedUser = localStorage.getItem('trendtrim_user');
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
-        localStorage.removeItem('luxebook_user');
+        localStorage.removeItem('trendtrim_user');
       }
     }
     setLoading(false);
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
   const skipLogin = () => {
     setGuest(true);
-    localStorage.setItem('luxebook_guest', 'true');
+    localStorage.setItem('trendtrim_guest', 'true');
   };
 
   const login = async (email, password) => {
@@ -41,8 +41,8 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         setUser(data.user);
         setGuest(false);
-        localStorage.removeItem('luxebook_guest');
-        localStorage.setItem('luxebook_user', JSON.stringify(data.user));
+        localStorage.removeItem('trendtrim_guest');
+        localStorage.setItem('trendtrim_user', JSON.stringify(data.user));
         return { success: true, user: data.user };
       } else {
         return { success: false, error: data.message };
@@ -52,13 +52,13 @@ export const AuthProvider = ({ children }) => {
       let authedUser;
       if (cleanEmail === 'admin@gmail.com') {
         if (password === 'adminlb123') {
-          authedUser = { email: cleanEmail, name: 'LuxeBook Admin', role: 'ADMIN', tier: 'DIAMOND TIER' };
+          authedUser = { email: cleanEmail, name: 'TrendTrim Admin', role: 'ADMIN', tier: 'DIAMOND TIER' };
         } else {
           return { success: false, error: 'Invalid credentials' };
         }
       } else {
         // Look up in our mock local storage database
-        const registered = JSON.parse(localStorage.getItem('luxebook_registered_users') || '[]');
+        const registered = JSON.parse(localStorage.getItem('trendtrim_registered_users') || '[]');
         const found = registered.find(u => u.email.toLowerCase() === cleanEmail);
         if (found) {
           authedUser = { 
@@ -76,13 +76,13 @@ export const AuthProvider = ({ children }) => {
           
           // Seed the mock database for future logins
           registered.push({ email: cleanEmail, name: '', phone: '', avatar: '', role: 'USER', tier: 'PLATINUM MEMBER' });
-          localStorage.setItem('luxebook_registered_users', JSON.stringify(registered));
+          localStorage.setItem('trendtrim_registered_users', JSON.stringify(registered));
         }
       }
       setUser(authedUser);
       setGuest(false);
-      localStorage.removeItem('luxebook_guest');
-      localStorage.setItem('luxebook_user', JSON.stringify(authedUser));
+      localStorage.removeItem('trendtrim_guest');
+      localStorage.setItem('trendtrim_user', JSON.stringify(authedUser));
       return { success: true, user: authedUser };
     }
   };
@@ -105,8 +105,8 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         setUser(data.user);
         setGuest(false);
-        localStorage.removeItem('luxebook_guest');
-        localStorage.setItem('luxebook_user', JSON.stringify(data.user));
+        localStorage.removeItem('trendtrim_guest');
+        localStorage.setItem('trendtrim_user', JSON.stringify(data.user));
         return { success: true, user: data.user };
       } else {
         return { success: false, error: data.message };
@@ -115,19 +115,19 @@ export const AuthProvider = ({ children }) => {
       const newUser = { name, email: cleanEmail, role: 'USER', tier: 'PLATINUM MEMBER', phone: '', avatar: '' };
       
       // Save in mock registration database list
-      const registered = JSON.parse(localStorage.getItem('luxebook_registered_users') || '[]');
+      const registered = JSON.parse(localStorage.getItem('trendtrim_registered_users') || '[]');
       const existsIdx = registered.findIndex(u => u.email.toLowerCase() === cleanEmail);
       if (existsIdx !== -1) {
         registered[existsIdx] = { ...registered[existsIdx], name, password };
       } else {
         registered.push({ name, email: cleanEmail, password, role: 'USER', tier: 'PLATINUM MEMBER', phone: '', avatar: '' });
       }
-      localStorage.setItem('luxebook_registered_users', JSON.stringify(registered));
+      localStorage.setItem('trendtrim_registered_users', JSON.stringify(registered));
 
       setUser(newUser);
       setGuest(false);
-      localStorage.removeItem('luxebook_guest');
-      localStorage.setItem('luxebook_user', JSON.stringify(newUser));
+      localStorage.removeItem('trendtrim_guest');
+      localStorage.setItem('trendtrim_user', JSON.stringify(newUser));
       return { success: true, user: newUser };
     }
   };
@@ -135,22 +135,22 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setGuest(false);
-    localStorage.removeItem('luxebook_user');
-    localStorage.removeItem('luxebook_guest');
+    localStorage.removeItem('trendtrim_user');
+    localStorage.removeItem('trendtrim_guest');
   };
 
   const updateUserProfile = (details) => {
     setUser(prev => {
       if (!prev) return null;
       const updated = { ...prev, ...details };
-      localStorage.setItem('luxebook_user', JSON.stringify(updated));
+      localStorage.setItem('trendtrim_user', JSON.stringify(updated));
 
       // Update mock database of registered users
-      const registered = JSON.parse(localStorage.getItem('luxebook_registered_users') || '[]');
+      const registered = JSON.parse(localStorage.getItem('trendtrim_registered_users') || '[]');
       const idx = registered.findIndex(u => u.email === updated.email);
       if (idx !== -1) {
         registered[idx] = { ...registered[idx], ...details };
-        localStorage.setItem('luxebook_registered_users', JSON.stringify(registered));
+        localStorage.setItem('trendtrim_registered_users', JSON.stringify(registered));
       }
       return updated;
     });

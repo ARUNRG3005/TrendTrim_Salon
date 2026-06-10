@@ -7,7 +7,7 @@ export default function Breadcrumbs() {
 
   // Define steps of the booking funnel
   const steps = [
-    { label: 'Ritual Select', path: '/booking', id: 'booking' },
+    { label: 'Service Select', path: '/booking', id: 'booking' },
     { label: 'Payment Details', path: '/checkout', id: 'checkout' },
     { label: 'Confirmation', path: '/confirmed', id: 'confirmed' },
   ];

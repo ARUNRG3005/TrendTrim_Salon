@@ -12,7 +12,7 @@ export default function Shader() {
           <span className="font-label-caps text-label-caps text-primary tracking-[0.3em]">VISUAL SYSTEM</span>
           <h1 className="font-display-lg text-display-lg text-primary mt-xs mb-md">Aesthetic Shaders</h1>
           <p className="font-body-lg text-on-surface-variant max-w-2xl mx-auto">
-            Deep color fields representing quiet luxury. The dynamic background simulation reflects warmth, sanctuary, and prestige.
+            Deep color fields representing quiet luxury. The dynamic background simulation reflects warmth, styling, and prestige.
           </p>
         </div>
 

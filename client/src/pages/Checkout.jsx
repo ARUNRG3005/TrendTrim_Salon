@@ -5,33 +5,42 @@ import { useAuth } from '../context/AuthContext';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
 import Breadcrumbs from '../components/Breadcrumbs';
+import { SidebarProvider, SidebarInset } from '../components/ui/sidebar';
 
-/* ─── Floating Label Input ──────────────────────────────────────────────── */
+/* ─── Premium Float Field ────────────────────────────────────────────────── */
 function FloatField({ label, type = 'text', value, onChange, placeholder, maxLength }) {
   const [focused, setFocused] = useState(false);
   const active = focused || !!value;
 
   return (
-    <div className="relative">
-      <label
-        className={`absolute left-4 transition-all duration-200 pointer-events-none z-10 font-label-caps
-          ${active
-            ? 'top-2 text-[9px] tracking-[0.12em] text-primary dark:text-gold'
-            : 'top-1/2 -translate-y-1/2 text-[11px] tracking-widest text-on-surface-variant/70 dark:text-zinc-400'
-          }`}
-      >
+    <div style={{ position: 'relative' }}>
+      <label style={{
+        position: 'absolute', left: '16px', zIndex: 10,
+        fontFamily: 'Tenor Sans, sans-serif',
+        pointerEvents: 'none',
+        transition: 'all 0.2s ease',
+        ...(active
+          ? { top: '10px', fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', color: focused ? 'var(--champagne)' : 'var(--color-text-mute)' }
+          : { top: '50%', transform: 'translateY(-50%)', fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-text-mute)' }
+        ),
+      }}>
         {label}
       </label>
       <input
-        type={type}
-        value={value}
-        maxLength={maxLength}
-        onChange={onChange}
+        type={type} value={value} maxLength={maxLength} onChange={onChange}
         placeholder={focused ? placeholder : ''}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        className={`w-full bg-white dark:bg-zinc-900 rounded-xl px-4 pt-6 pb-3 text-on-surface dark:text-zinc-100 font-body-md border-2 transition-all duration-200 focus:outline-none
-          ${focused ? 'border-primary dark:border-gold shadow-[0_0_0_4px_rgba(212,175,55,0.08)]' : 'border-outline-variant/40 dark:border-zinc-800 hover:border-outline/60'}`}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        style={{
+          width: '100%',
+          background: 'var(--color-surface)',
+          border: `1px solid ${focused ? 'var(--champagne)' : 'var(--color-border)'}`,
+          borderRadius: '14px',
+          padding: '22px 16px 10px',
+          fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem',
+          color: 'var(--color-text)', outline: 'none',
+          transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+          boxShadow: focused ? '0 0 0 3px rgba(201,169,110,0.1)' : 'none',
+        }}
       />
     </div>
   );
@@ -41,203 +50,216 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { bookingForm, createBooking } = useBooking();
   const { triggerAuthRequired } = useAuth();
-  
+
   const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [error, setError] = useState('');
+  const [expiry, setExpiry]         = useState('');
+  const [cvv, setCvv]               = useState('');
+  const [cardName, setCardName]     = useState('');
+  const [error, setError]           = useState('');
   const [processing, setProcessing] = useState(false);
   const [showCancellationPolicy, setShowCancellationPolicy] = useState(false);
 
-  // Price calculations
-  const price = bookingForm.service === 'Signature Facial' ? 195 : bookingForm.service === 'Deep Tissue Spa' ? 180 : 220;
+  const price = bookingForm.price || (bookingForm.service === 'Signature Haircut & Style' ? 95 : bookingForm.service === 'Premium Color & Highlights' ? 180 : 250);
   const serviceCharge = 15;
   const total = price + serviceCharge;
 
   const handlePay = async (e) => {
     e.preventDefault();
     triggerAuthRequired(async () => {
-      if (!cardNumber || !expiry || !cvv || !cardName) {
-        setError('Please complete all payment fields.');
-        return;
-      }
+      if (!cardNumber || !expiry || !cvv || !cardName) { setError('Please complete all payment fields.'); return; }
       setError('');
       setProcessing(true);
-
-      // Simulate luxury API payment delay
       setTimeout(async () => {
-        const confirmedBooking = await createBooking({
-          time: bookingForm.time,
-          price: total
-        });
+        const confirmedBooking = await createBooking({ time: bookingForm.time, price: total });
         setProcessing(false);
         navigate('/confirmed', { state: { booking: confirmedBooking } });
       }, 1500);
-    }, "Please login or create an account to continue booking.");
+    }, 'Please login or create an account to continue booking.');
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent text-on-surface dark:text-zinc-100 font-body-md overflow-x-hidden pt-20">
+    <SidebarProvider>
       <Navigation />
+      <SidebarInset style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)', color: 'var(--color-text)', overflow: 'hidden' }} className="">
 
-      <main className="flex-1 py-xl px-lg max-w-4xl mx-auto w-full page-transition">
-        
-        {/* Header */}
-        <div className="text-center mb-xl">
-          <span className="font-label-caps text-label-caps text-primary dark:text-gold tracking-[0.2em]">SECURE TRANSACTION</span>
-          <h1 className="font-display-lg text-display-lg text-on-background dark:text-white mt-xs">Checkout Summary</h1>
+      {/* Page hero */}
+      <section style={{ paddingTop: '110px', paddingBottom: 'clamp(2.5rem, 5vw, 4rem)', paddingLeft: 'clamp(1.25rem, 5vw, 4rem)', paddingRight: 'clamp(1.25rem, 5vw, 4rem)', textAlign: 'center', borderBottom: '1px solid var(--color-border)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '400px', height: '200px', background: 'rgba(201,169,110,0.04)', borderRadius: '50%', filter: 'blur(70px)', pointerEvents: 'none' }} />
+        <div className="page-transition" style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+            <span className="eyebrow-refined">Secure Transaction</span>
+          </div>
+          <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(2rem, 5.5vw, 3.5rem)', letterSpacing: '-0.025em', lineHeight: 1.0, color: 'var(--color-text)', margin: '0 0 0.5rem' }}>
+            Checkout Summary
+          </h1>
         </div>
+      </section>
 
-        {/* Funnel Tracker */}
-        <div className="mb-md">
+      <main style={{ flex: 1, padding: 'clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 5vw, 4rem)', maxWidth: '1100px', width: '100%', margin: '0 auto' }}>
+
+        <div style={{ marginBottom: '1.75rem' }}>
           <Breadcrumbs />
         </div>
 
-        {/* Back navigation option */}
-        <div className="mb-md">
-          <Link
-            to="/booking"
-            className="flex items-center gap-xs text-on-surface-variant dark:text-zinc-400 hover:text-primary dark:hover:text-gold transition-colors duration-200 font-label-caps text-xs group"
-          >
-            <span className="material-symbols-outlined text-[18px] group-hover:-translate-x-1 transition-transform duration-200">arrow_back</span>
-            Back to Scheduler
-          </Link>
-        </div>
+        {/* Back link */}
+        <Link to="/booking" style={{
+          display: 'inline-flex', alignItems: 'center', gap: '6px',
+          fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase',
+          color: 'var(--color-text-dim)', textDecoration: 'none',
+          marginBottom: '2rem', transition: 'color 0.2s ease',
+        }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--champagne)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-dim)'}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+          Back to Scheduler
+        </Link>
 
+        {/* Error */}
         {error && (
-          <div className="mb-md p-sm bg-red-950/40 border border-red-500/30 rounded-xl text-red-300 font-body-sm text-center">
-            {error}
+          <div style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'rgba(196,137,122,0.08)', border: '1px solid rgba(196,137,122,0.28)', borderRadius: '12px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#C4897A', flexShrink: 0 }}>error</span>
+            <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.8125rem', fontWeight: 300, color: '#C4897A' }}>{error}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-lg">
-          
-          {/* Order Summary */}
-          <div className="md:col-span-5 space-y-md">
-            <div className="glass-card-light dark:bg-zinc-900 rounded-2xl p-lg border border-gold/10 dark:border-zinc-800 shadow-lg space-y-sm">
-              <h3 className="font-headline-md text-headline-md text-primary dark:text-gold pb-sm border-b border-outline-variant/30 dark:border-zinc-800">
-                Itinerary Details
-              </h3>
-              
-              <div className="flex justify-between font-body-sm">
-                <span className="text-on-surface-variant dark:text-zinc-400">Treatment:</span>
-                <span className="font-semibold text-primary dark:text-gold">{bookingForm.service || 'Not Selected'}</span>
-              </div>
-              <div className="flex justify-between font-body-sm">
-                <span className="text-on-surface-variant dark:text-zinc-400">Therapist:</span>
-                <span className="font-semibold dark:text-zinc-200">{bookingForm.therapist || 'Not Selected'}</span>
-              </div>
-              <div className="flex justify-between font-body-sm">
-                <span className="text-on-surface-variant dark:text-zinc-400">Date:</span>
-                <span className="font-semibold dark:text-zinc-200">{bookingForm.date || 'Not Selected'}</span>
-              </div>
-              <div className="flex justify-between font-body-sm">
-                <span className="text-on-surface-variant dark:text-zinc-400">Time:</span>
-                <span className="font-semibold dark:text-zinc-200">{bookingForm.time || 'Not Selected'}</span>
-              </div>
-              
-              <div className="pt-md border-t border-outline-variant/30 dark:border-zinc-800 space-y-xs">
-                <div className="flex justify-between text-body-sm text-on-surface-variant dark:text-zinc-400">
-                  <span>Ritual Fee</span>
-                  <span>${price}.00</span>
-                </div>
-                <div className="flex justify-between text-body-sm text-on-surface-variant dark:text-zinc-400">
-                  <span>Concierge Surcharge</span>
-                  <span>${serviceCharge}.00</span>
-                </div>
-                <div className="flex justify-between text-body-md font-bold text-primary dark:text-gold pt-xs border-t border-outline-variant/10 dark:border-zinc-800">
-                  <span>Total Amount</span>
-                  <span>${total}.00</span>
-                </div>
-              </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.75rem', alignItems: 'start' }}>
 
+          {/* ─── Order Summary ─── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ borderRadius: '20px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '1.375rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.1875rem', color: 'var(--champagne)', margin: 0 }}>Itinerary Details</h3>
+              </div>
+              {/* Items */}
+              <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  { label: 'Service', value: bookingForm.service ? `${bookingForm.service} (${bookingForm.tier || 'Standard'})` : 'Not Selected' },
+                  { label: 'Stylist', value: bookingForm.therapist || 'Not Selected' },
+                  { label: 'Date', value: bookingForm.date || 'Not Selected' },
+                  { label: 'Time', value: bookingForm.time || 'Not Selected' },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.875rem', color: 'var(--color-text-dim)', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '0.9375rem', color: 'var(--color-text)', textAlign: 'right' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Price breakdown */}
+              <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {[
+                  { label: 'Service Fee', val: `$${price}.00` },
+                  { label: 'Booking Fee', val: `$${serviceCharge}.00` },
+                ].map(r => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.875rem', color: 'var(--color-text-dim)' }}>{r.label}</span>
+                    <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.875rem', color: 'var(--color-text-dim)' }}>{r.val}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-mute)' }}>Total Amount</span>
+                  <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.5rem', color: 'var(--champagne)' }}>${total}.00</span>
+                </div>
+              </div>
             </div>
 
-            {/* Inline Collapsible Cancellation Policy */}
-            <div className="bg-white dark:bg-zinc-900 border border-outline-variant/30 dark:border-zinc-800 rounded-2xl p-sm">
-              <button
-                type="button"
-                onClick={() => setShowCancellationPolicy(!showCancellationPolicy)}
-                className="w-full flex items-center justify-between text-left font-label-caps text-xs text-on-surface-variant dark:text-zinc-300 py-1 px-2 focus:outline-none"
+            {/* Cancellation policy */}
+            <div style={{ borderRadius: '16px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', overflow: 'hidden' }}>
+              <button type="button" onClick={() => setShowCancellationPolicy(!showCancellationPolicy)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase',
+                  color: 'var(--color-text-dim)',
+                }}
               >
-                <span>CANCELLATION POLICY</span>
-                <span className={`material-symbols-outlined text-[16px] transition-transform duration-300 ${showCancellationPolicy ? 'rotate-180' : ''}`}>
-                  expand_more
-                </span>
+                <span>Cancellation Policy</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--champagne)', transition: 'transform 0.3s ease', transform: showCancellationPolicy ? 'rotate(180deg)' : 'none' }}>expand_more</span>
               </button>
               {showCancellationPolicy && (
-                <div className="mt-2 p-2 border-t border-outline-variant/10 dark:border-zinc-800/60 text-[12px] text-on-surface-variant dark:text-zinc-400 font-body-sm leading-relaxed animate-[fadeIn_0.3s_ease]">
-                  We value our specialist's time. Cancel or reschedule for free up to 24 hours prior. Cancellations within 24 hours are subject to a 50% ritual fee surcharge. No-shows will be charged at the full reserved rate.
+                <div style={{ padding: '0 18px 16px', borderTop: '1px solid var(--color-border)', animation: 'fadeIn 0.3s ease' }}>
+                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.8125rem', color: 'var(--color-text-dim)', lineHeight: 1.75, marginTop: '12px' }}>
+                    Cancel or reschedule for free up to 24 hours prior. Cancellations within 24 hours are subject to a 50% service fee. No-shows are charged at the full reserved rate.
+                  </p>
                 </div>
               )}
             </div>
+
+            {/* Security badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 18px', borderRadius: '14px', background: 'rgba(201,169,110,0.04)', border: '1px solid rgba(201,169,110,0.12)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--champagne)', flexShrink: 0 }}>shield</span>
+              <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.8125rem', color: 'var(--color-text-dim)', margin: 0, lineHeight: 1.6 }}>
+                256-bit SSL encryption protects every transaction on TrendTrim.
+              </p>
+            </div>
           </div>
 
-          {/* Payment Details */}
-          <div className="md:col-span-7">
-            <form onSubmit={handlePay} className="glass-card-light dark:bg-zinc-900 rounded-2xl p-lg border border-gold/10 dark:border-zinc-800 shadow-lg space-y-md">
-              <h3 className="font-headline-md text-headline-md text-primary dark:text-gold pb-sm border-b border-outline-variant/30 dark:border-zinc-800">
-                Credit Card Payment
-              </h3>
-
-              {/* Floating Labels Inputs */}
-              <FloatField
-                label="CARDHOLDER NAME"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="Eleanor Vane"
-              />
-
-              <FloatField
-                label="CARD NUMBER"
-                value={cardNumber}
-                maxLength="19"
-                onChange={(e) => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim())}
-                placeholder="0000 0000 0000 0000"
-              />
-
-              <div className="grid grid-cols-2 gap-md">
-                <FloatField
-                  label="EXPIRY DATE"
-                  value={expiry}
-                  maxLength="5"
-                  onChange={(e) => setExpiry(e.target.value)}
-                  placeholder="MM/YY"
-                />
-                
-                <FloatField
-                  label="CVV / CVC"
-                  type="password"
-                  value={cvv}
-                  maxLength="3"
-                  onChange={(e) => setCvv(e.target.value)}
-                  placeholder="000"
-                />
+          {/* ─── Payment Form ─── */}
+          <div>
+            <form onSubmit={handlePay} style={{ borderRadius: '20px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '1.375rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--champagne)' }}>credit_card</span>
+                <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.1875rem', color: 'var(--champagne)', margin: 0 }}>Credit Card Payment</h3>
               </div>
 
-              <button
-                type="submit"
-                disabled={processing}
-                className="w-full bg-primary dark:bg-gold text-on-primary dark:text-zinc-950 font-label-caps text-label-caps py-md rounded-xl hover:bg-primary-container dark:hover:bg-yellow-500 transition-all shadow-xl font-bold flex items-center justify-center gap-xs cursor-pointer min-h-[48px]"
-              >
-                {processing ? (
-                  <>
-                    <span className="animate-spin material-symbols-outlined text-[18px]">progress_activity</span>
-                    <span>AUTHORIZING PAYMENT...</span>
-                  </>
-                ) : (
-                  <span>AUTHORIZE CHARGE & RESERVE</span>
-                )}
-              </button>
+              {/* Card logos */}
+              <div style={{ padding: '1rem 1.5rem 0', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {['visa', 'mastercard', 'amex'].map(card => (
+                  <div key={card} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg)', fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-dim)' }}>
+                    {card}
+                  </div>
+                ))}
+              </div>
 
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.125rem' }}>
+                <FloatField label="Cardholder Name" value={cardName} onChange={e => setCardName(e.target.value)} placeholder="Alexandra Beaumont" />
+                <FloatField label="Card Number" value={cardNumber} maxLength="19"
+                  onChange={e => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim())}
+                  placeholder="0000 0000 0000 0000"
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <FloatField label="Expiry Date" value={expiry} maxLength="5" onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" />
+                  <FloatField label="CVV / CVC" type="password" value={cvv} maxLength="3" onChange={e => setCvv(e.target.value)} placeholder="000" />
+                </div>
+
+                <button type="submit" disabled={processing}
+                  className="shimmer-btn"
+                  style={{
+                    width: '100%', padding: '15px',
+                    background: processing ? 'rgba(201,169,110,0.7)' : 'var(--champagne)',
+                    color: '#0D0D0D',
+                    borderRadius: '14px',
+                    fontFamily: 'Tenor Sans, sans-serif', fontSize: '10px',
+                    letterSpacing: '0.22em', textTransform: 'uppercase',
+                    border: 'none', cursor: processing ? 'wait' : 'pointer',
+                    minHeight: '52px', fontWeight: 500,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '9px',
+                    transition: 'all 0.25s ease',
+                    marginTop: '0.25rem',
+                  }}
+                >
+                  {processing ? (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px', animation: 'spin-slow 0.8s linear infinite' }}>progress_activity</span>
+                      Authorizing Payment...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>lock</span>
+                      Authorize Charge &amp; Reserve
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
-
         </div>
       </main>
 
       <Footer />
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

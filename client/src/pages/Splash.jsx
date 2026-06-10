@@ -18,8 +18,8 @@ export default function Splash() {
       } else {
         // Redirect to homepage if user/guest is already stored, otherwise to login page
         setTimeout(() => {
-          const storedUser = localStorage.getItem('luxebook_user');
-          const storedGuest = localStorage.getItem('luxebook_guest') === 'true';
+          const storedUser = localStorage.getItem('trendtrim_user');
+          const storedGuest = localStorage.getItem('trendtrim_guest') === 'true';
           if (storedUser || storedGuest) {
             navigate('/home');
           } else {
@@ -57,7 +57,7 @@ export default function Splash() {
         {/* Brand Typography */}
         <div className="text-center space-y-md">
           <h1 className="font-headline-xl text-headline-xl text-on-primary tracking-[0.2em] opacity-0 animate-[fadeIn_1.5s_ease-out_1s_forwards]">
-            LUXEBOOK
+            TrendTrim
           </h1>
           <p className="font-label-caps text-label-caps text-tertiary-fixed-dim/70 uppercase tracking-[0.4em] opacity-0 animate-[fadeIn_1.5s_ease-out_1.5s_forwards]">
             Elevating Excellence
@@ -79,7 +79,7 @@ export default function Splash() {
       <div className="absolute bottom-md opacity-30">
         <div className="flex items-center gap-xs">
           <span className="material-symbols-outlined text-[14px] text-on-primary">workspace_premium</span>
-          <span className="font-label-caps text-[10px] text-on-primary tracking-widest">PRIVATE CONCIERGE NETWORK</span>
+          <span className="font-label-caps text-label-caps text-primary tracking-[0.3em]">THE TRENDTRIM ARCHIVE</span>
         </div>
       </div>
     </main>

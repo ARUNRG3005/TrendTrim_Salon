@@ -14,6 +14,7 @@ import Confirmed from './pages/Confirmed';
 import Portfolio from './pages/Portfolio';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Membership from './pages/Membership';
 import AuthModal from './components/AuthModal';
 
 // Scroll to Top on Page navigation
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/confirmed" element={<OnboardingGuard><Confirmed /></OnboardingGuard>} />
             <Route path="/portfolio" element={<OnboardingGuard><Portfolio /></OnboardingGuard>} />
             <Route path="/profile" element={<OnboardingGuard><Profile /></OnboardingGuard>} />
+            <Route path="/membership" element={<OnboardingGuard><Membership /></OnboardingGuard>} />
             
             {/* Protected Admin Console */}
             <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />

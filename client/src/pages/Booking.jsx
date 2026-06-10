@@ -5,51 +5,64 @@ import { useAuth } from '../context/AuthContext';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
 import Breadcrumbs from '../components/Breadcrumbs';
+import { SidebarProvider, SidebarInset } from '../components/ui/sidebar';
+import NumberFlow from '@number-flow/react';
+import SpotlightCard from '../components/ui/SpotlightCard';
+import { CalendarWithTimePresets } from '../components/ui/calendar-with-time-presets';
 
-/* ─── Floating Label Input ──────────────────────────────────────────────── */
+/* ─── Floating Label Field ───────────────────────────────────────────────── */
 function FloatField({ label, type = 'text', value, onChange, min, children, as = 'input' }) {
   const [focused, setFocused] = useState(false);
   const active = focused || !!value;
 
+  const sharedStyle = {
+    width: '100%',
+    background: 'var(--color-surface)',
+    border: '1px solid',
+    borderColor: focused ? 'var(--champagne)' : 'var(--color-border)',
+    borderRadius: '14px',
+    padding: '22px 16px 10px',
+    fontFamily: 'Cormorant Garamond, serif',
+    fontSize: '1.0625rem',
+    color: 'var(--color-text)',
+    outline: 'none',
+    transition: 'border-color 0.25s ease, box-shadow 0.25s ease',
+    boxShadow: focused ? '0 0 0 3px rgba(201,169,110,0.1)' : 'none',
+    appearance: 'none',
+    cursor: as === 'select' ? 'pointer' : 'text',
+  };
+
   return (
-    <div className="relative">
-      <label
-        className={`absolute left-4 transition-all duration-200 pointer-events-none z-10 font-label-caps
-          ${active
-            ? 'top-2 text-[9px] tracking-[0.12em] text-primary dark:text-gold'
-            : 'top-1/2 -translate-y-1/2 text-[11px] tracking-widest text-on-surface-variant/70 dark:text-zinc-400'
-          }`}
-      >
+    <div style={{ position: 'relative' }}>
+      <label style={{
+        position: 'absolute', left: '16px',
+        transition: 'all 0.2s ease',
+        pointerEvents: 'none', zIndex: 10,
+        fontFamily: 'Tenor Sans, sans-serif',
+        ...(active
+          ? { top: '9px', fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', color: focused ? 'var(--champagne)' : 'var(--color-text-mute)' }
+          : { top: '50%', transform: 'translateY(-50%)', fontSize: '10px', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-text-mute)' }
+        ),
+      }}>
         {label}
       </label>
 
       {as === 'select' ? (
-        <select
-          value={value}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          className={`w-full bg-white dark:bg-zinc-900 rounded-xl px-4 pt-6 pb-3 text-on-surface dark:text-zinc-100 font-body-md border-2 appearance-none cursor-pointer transition-all duration-200 focus:outline-none
-            ${focused ? 'border-primary dark:border-gold shadow-[0_0_0_4px_rgba(212,175,55,0.08)]' : 'border-outline-variant/40 dark:border-zinc-800 hover:border-outline/60'}`}
+        <select value={value} onChange={onChange}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          style={sharedStyle}
         >
           {children}
         </select>
       ) : (
-        <input
-          type={type}
-          value={value}
-          min={min}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          className={`w-full bg-white dark:bg-zinc-900 rounded-xl px-4 pt-6 pb-3 text-on-surface dark:text-zinc-100 font-body-md border-2 transition-all duration-200 focus:outline-none
-            ${focused ? 'border-primary dark:border-gold shadow-[0_0_0_4px_rgba(212,175,55,0.08)]' : 'border-outline-variant/40 dark:border-zinc-800 hover:border-outline/60'}`}
+        <input type={type} value={value} min={min} onChange={onChange}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          style={{ ...sharedStyle, colorScheme: type === 'date' ? 'dark' : undefined }}
         />
       )}
 
-      {/* Select arrow icon */}
       {as === 'select' && (
-        <span className={`material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[18px] pointer-events-none transition-colors duration-200 ${focused ? 'text-primary dark:text-gold' : 'text-on-surface-variant'}`}>
+        <span className="material-symbols-outlined" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '16px', pointerEvents: 'none', color: focused ? 'var(--champagne)' : 'var(--color-text-mute)', transition: 'color 0.25s ease' }}>
           expand_more
         </span>
       )}
@@ -60,95 +73,240 @@ function FloatField({ label, type = 'text', value, onChange, min, children, as =
 /* ─── Time Chip ─────────────────────────────────────────────────────────── */
 function TimeChip({ time, selected, onClick }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`time-chip relative py-3 rounded-xl font-label-caps text-[11px] tracking-widest border-2 transition-all duration-250 overflow-hidden group
-        ${selected
-          ? 'bg-primary dark:bg-gold text-white dark:text-zinc-950 border-primary dark:border-gold shadow-lg shadow-primary/20 scale-[0.97]'
-          : 'bg-white dark:bg-zinc-900 border-outline-variant/40 dark:border-zinc-800 text-on-surface dark:text-zinc-300 hover:border-primary/60 dark:hover:border-gold/60 hover:shadow-md'
-        }`}
+    <button type="button" onClick={onClick}
+      style={{
+        padding: '12px 6px',
+        borderRadius: '12px',
+        fontFamily: 'Tenor Sans, sans-serif',
+        fontSize: '10px', letterSpacing: '0.14em', textTransform: 'uppercase',
+        border: selected ? '1px solid var(--champagne)' : '1px solid var(--color-border)',
+        background: selected ? 'var(--champagne)' : 'var(--color-surface)',
+        color: selected ? '#0D0D0D' : 'var(--color-text-dim)',
+        cursor: 'pointer',
+        transition: 'all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        transform: selected ? 'scale(0.97)' : 'scale(1)',
+        boxShadow: selected ? '0 4px 16px rgba(201,169,110,0.25)' : 'none',
+        minHeight: '46px',
+        position: 'relative', overflow: 'hidden',
+      }}
+      onMouseEnter={e => { if (!selected) { e.currentTarget.style.borderColor = 'rgba(201,169,110,0.45)'; e.currentTarget.style.color = 'var(--champagne)'; } }}
+      onMouseLeave={e => { if (!selected) { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text-dim)'; } }}
     >
-      <span className="relative z-10">{time}</span>
-      {!selected && (
-        <span className="absolute inset-0 bg-primary/5 dark:bg-gold/5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-xl"/>
-      )}
+      {time}
     </button>
   );
 }
 
-/* ─── Therapist Card ────────────────────────────────────────────────────── */
-const therapists = [
-  {
-    name: 'Any Professional',
-    title: 'Best Available',
-    rating: 4.9,
-    img: null,
-    icon: 'groups',
-  },
-  {
-    name: 'Dr. Sarah Sterling',
-    title: 'Facial & Skin Expert',
-    rating: 5.0,
-    img: 'https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80',
-  },
-  {
-    name: 'Master Julian',
-    title: 'Deep Tissue Specialist',
-    rating: 4.8,
-    img: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80',
-  },
+/* ─── Data ──────────────────────────────────────────────────────────────── */
+const DEFAULT_STYLISTS = [
+  { name: 'Any Professional', title: 'Best Available', rating: 4.9, img: null, icon: 'groups' },
+  { name: 'Jessica Monroe', title: 'Senior Hair Stylist', rating: 5.0, img: 'https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80' },
+  { name: 'David Chen', title: 'Color Specialist', rating: 4.8, img: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80' },
 ];
 
-const services = [
-  { name: 'Signature Facial',  duration: '90 min', price: '$280', icon: 'face_retouching_natural' },
-  { name: 'Deep Tissue Spa',   duration: '60 min', price: '$220', icon: 'self_improvement' },
-  { name: 'Aesthetic Ritual',  duration: '120 min', price: '$380', icon: 'spa' },
+const DEFAULT_SERVICES = [
+  // HAIR
+  { name: 'Signature Haircut & Style', duration: '60 MIN', price: '$95', icon: 'content_cut', category: 'Hair' },
+  { name: 'Luxury Blowout', duration: '45 MIN', price: '$65', icon: 'air', category: 'Hair' },
+  { name: 'Deep Conditioning Keratin Therapy', duration: '75 MIN', price: '$120', icon: 'spa', category: 'Hair' },
+  { name: 'Silk Press & Scalp Care', duration: '90 MIN', price: '$110', icon: 'dry', category: 'Hair' },
+  { name: 'Custom Extension Fitting', duration: '150 MIN', price: '$300', icon: 'extension', category: 'Hair' },
+  { name: 'Olaplex Restructuring Ritual', duration: '45 MIN', price: '$85', icon: 'medical_services', category: 'Hair' },
+  { name: 'Scalp Detox & High-Frequency Massage', duration: '60 MIN', price: '$90', icon: 'wash', category: 'Hair' },
+  { name: 'Editorial Event Hair Updo', duration: '75 MIN', price: '$135', icon: 'event', category: 'Hair' },
+  { name: 'Brazilian Blowout Treatment', duration: '120 MIN', price: '$280', icon: 'bolt', category: 'Hair' },
+  { name: 'Premium Hair Botox Styling', duration: '90 MIN', price: '$190', icon: 'health_and_safety', category: 'Hair' },
+
+  // COLOR
+  { name: 'Premium Color & Highlights', duration: '90 MIN', price: '$180', icon: 'palette', category: 'Color' },
+  { name: 'Signature French Balayage', duration: '150 MIN', price: '$240', icon: 'brush', category: 'Color' },
+  { name: 'Platinum Double Process Blonde', duration: '180 MIN', price: '$290', icon: 'color_lens', category: 'Color' },
+  { name: 'Full Head Foil Highlights', duration: '120 MIN', price: '$195', icon: 'grid_view', category: 'Color' },
+  { name: 'Root Touch-Up & Shine Glaze', duration: '60 MIN', price: '$115', icon: 'opacity', category: 'Color' },
+  { name: 'Creative Fashion Color', duration: '150 MIN', price: '$220', icon: 'auto_awesome', category: 'Color' },
+  { name: 'Color Correction Consultation', duration: '180 MIN', price: '$320', icon: 'build', category: 'Color' },
+  { name: 'Ombre Hair Graduation', duration: '120 MIN', price: '$210', icon: 'gradient', category: 'Color' },
+  { name: 'Pastel Hair Tone Glazing', duration: '45 MIN', price: '$95', icon: 'invert_colors', category: 'Color' },
+  { name: 'Sun-Kissed Babylights', duration: '90 MIN', price: '$165', icon: 'wb_sunny', category: 'Color' },
+
+  // BEAUTY
+  { name: 'Bridal Makeup Package', duration: '120 MIN', price: '$250', icon: 'face_retouching_natural', category: 'Beauty' },
+  { name: 'Editorial Photographic Glamour', duration: '75 MIN', price: '$140', icon: 'photo_camera', category: 'Beauty' },
+  { name: 'Airbrush High-Definition Makeup', duration: '60 MIN', price: '$125', icon: 'blur_on', category: 'Beauty' },
+  { name: 'Classic Lash Extension Full Set', duration: '90 MIN', price: '$180', icon: 'visibility', category: 'Beauty' },
+  { name: 'Brow Lamination & Henna Shaping', duration: '60 MIN', price: '$95', icon: 'brush', category: 'Beauty' },
+  { name: 'Organic Hydration Facial Treatment', duration: '60 MIN', price: '$110', icon: 'spa', category: 'Beauty' },
+  { name: 'Anti-Aging Collagen Therapy', duration: '75 MIN', price: '$145', icon: 'health_and_safety', category: 'Beauty' },
+  { name: 'Custom Spray Tanning Sessions', duration: '30 MIN', price: '$60', icon: 'wb_sunny', category: 'Beauty' },
+  { name: 'Luxury Eye Contour Lifting', duration: '45 MIN', price: '$80', icon: 'remove_red_eye', category: 'Beauty' },
+  { name: 'Express Glow Makeup Application', duration: '45 MIN', price: '$75', icon: 'flash_on', category: 'Beauty' },
+
+  // NAILS
+  { name: 'Classic Manicure & Pedicure', duration: '75 MIN', price: '$85', icon: 'spa', category: 'Nails' },
+  { name: 'Gel Bottle Extensions Set', duration: '90 MIN', price: '$120', icon: 'construction', category: 'Nails' },
+  { name: 'Signature Champagne Pedicure', duration: '60 MIN', price: '$95', icon: 'wine_bar', category: 'Nails' },
+  { name: 'Luxury Paraffin Wax Mani-Pedi', duration: '90 MIN', price: '$110', icon: 'waves', category: 'Nails' },
+  { name: 'Gel Polish Change & Shaping', duration: '45 MIN', price: '$55', icon: 'clean_hands', category: 'Nails' },
+  { name: 'Custom Accent Nail Artistry', duration: '60 MIN', price: '$75', icon: 'brush', category: 'Nails' },
+  { name: 'Organic Spa Citrus Hand Treatment', duration: '45 MIN', price: '$65', icon: 'eco', category: 'Nails' },
+  { name: 'IBX Strength Repair Therapy', duration: '30 MIN', price: '$45', icon: 'healing', category: 'Nails' },
+  { name: 'Detox Charcoal Foot Spa', duration: '60 MIN', price: '$80', icon: 'filter_alt', category: 'Nails' },
+  { name: 'Luxury Matte Gel Manicure', duration: '45 MIN', price: '$70', icon: 'back_hand', category: 'Nails' },
+
+  // GROOMING
+  { name: "Gentleman's Grooming", duration: '45 MIN', price: '$70', icon: 'face_6', category: 'Grooming' },
+  { name: 'Executive Beard Sculpting', duration: '30 MIN', price: '$50', icon: 'content_cut', category: 'Grooming' },
+  { name: 'Hot Towel Facial Shave Ritual', duration: '45 MIN', price: '$60', icon: 'hot_tub', category: 'Grooming' },
+  { name: "Premium Men's Charcoal Facial", duration: '60 MIN', price: '$85', icon: 'cleaning_services', category: 'Grooming' },
+  { name: "Classic Men's Haircut & Wash", duration: '45 MIN', price: '$65', icon: 'content_cut', category: 'Grooming' },
+  { name: 'Sport Pedicure for Men', duration: '45 MIN', price: '$75', icon: 'directions_run', category: 'Grooming' },
+  { name: 'Nose & Ear Premium Waxing', duration: '20 MIN', price: '$35', icon: 'hearing_disabled', category: 'Grooming' },
+  { name: "Gentleman's Express Mani-Pedi", duration: '60 MIN', price: '$90', icon: 'dry_cleaning', category: 'Grooming' },
+  { name: 'Scalp Stimulation Treatment', duration: '30 MIN', price: '$55', icon: 'waves', category: 'Grooming' },
+  { name: 'Grey Blending Color Treatment', duration: '45 MIN', price: '$80', icon: 'color_lens', category: 'Grooming' },
 ];
+
+const categories = ['All', 'Hair', 'Color', 'Beauty', 'Nails', 'Grooming'];
 
 const times = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00'];
 
-/* ─── Main Page ─────────────────────────────────────────────────────────── */
+const STEPS = ['Service & Stylist', 'Date & Time', 'Review'];
+
+const getNumericPrice = (priceStr) => {
+  if (typeof priceStr === 'number') return priceStr;
+  return parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
+};
+
+/* ─── Main ──────────────────────────────────────────────────────────────── */
 export default function Booking() {
   const navigate = useNavigate();
   const { bookingForm, updateBookingForm } = useBooking();
   const { triggerAuthRequired } = useAuth();
   const [step, setStep] = useState(0);
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedTime, setSelectedTime] = useState(bookingForm.time || '');
   const [error, setError] = useState('');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [pricePeriod, setPricePeriod] = useState(0); // 0 = Standard, 1 = VIP
 
-  // ── Load preferences from localStorage on mount ──
+  const [servicesList, setServicesList] = useState(DEFAULT_SERVICES);
+  const [stylistsList, setStylistsList] = useState(DEFAULT_STYLISTS);
+
   useEffect(() => {
-    const savedService = localStorage.getItem('pref_service');
-    const savedTherapist = localStorage.getItem('pref_therapist');
-    
-    if (savedService && !bookingForm.service) {
-      updateBookingForm('service', savedService);
-    } else if (!bookingForm.service) {
-      updateBookingForm('service', services[0].name);
-    }
-    
-    if (savedTherapist && !bookingForm.therapist) {
-      updateBookingForm('therapist', savedTherapist);
-    } else if (!bookingForm.therapist) {
-      updateBookingForm('therapist', therapists[0].name);
-    }
+    const fetchServicesAndStylists = async () => {
+      try {
+        const resServices = await fetch('http://localhost:5000/api/services');
+        if (resServices.ok) {
+          const data = await resServices.json();
+          if (data && data.length > 0) {
+            const mappedServices = data.map(s => ({
+              name: s.name,
+              duration: `${s.duration_minutes} MIN`,
+              price: `$${s.price}`,
+              icon: s.category === 'Color' ? 'palette' : s.category === 'Beauty' ? 'face_retouching_natural' : s.category === 'Nails' ? 'spa' : s.category === 'Grooming' ? 'face_6' : 'content_cut',
+              category: s.category
+            }));
+            setServicesList(mappedServices);
+            
+            // Set initial form state for service if not set
+            const savedService = localStorage.getItem('pref_service');
+            if (savedService && mappedServices.some(s => s.name === savedService)) {
+              updateBookingForm('service', savedService);
+            } else {
+              updateBookingForm('service', mappedServices[0].name);
+            }
+          }
+        }
+
+        const resStylists = await fetch('http://localhost:5000/api/stylists');
+        if (resStylists.ok) {
+          const data = await resStylists.json();
+          if (data && data.length > 0) {
+            const mappedStylists = data.map(s => ({
+              name: s.name,
+              title: s.specialization || 'Stylist',
+              rating: s.average_rating || 5.0,
+              img: s.profile_photo_url || null,
+              icon: 'person'
+            }));
+            const anyProfessional = { name: 'Any Professional', title: 'Best Available', rating: 4.9, img: null, icon: 'groups' };
+            const fullList = [anyProfessional, ...mappedStylists];
+            setStylistsList(fullList);
+            
+            // Set initial form state for therapist if not set
+            const savedTherapist = localStorage.getItem('pref_therapist');
+            if (savedTherapist && fullList.some(t => t.name === savedTherapist)) {
+              updateBookingForm('therapist', savedTherapist);
+            } else {
+              updateBookingForm('therapist', fullList[0].name);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching services or stylists:', err);
+      }
+    };
+    fetchServicesAndStylists();
   }, []);
 
-  // ── Save preferences to localStorage when values change ──
+  const calendarDate = React.useMemo(() => {
+    if (!bookingForm.date) return undefined;
+    const d = new Date(bookingForm.date + 'T00:00:00');
+    return isNaN(d.getTime()) ? undefined : d;
+  }, [bookingForm.date]);
+
+  const handleSelectDate = (date) => {
+    if (!date) {
+      updateBookingForm('date', '');
+      return;
+    }
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    updateBookingForm('date', `${yyyy}-${mm}-${dd}`);
+  };
+
+  useEffect(() => {
+    if (bookingForm.time) {
+      setSelectedTime(bookingForm.time);
+    }
+  }, [bookingForm.time]);
+
+  const selectedService = servicesList.find(s => s.name === bookingForm.service) || servicesList[0] || DEFAULT_SERVICES[0];
+  const selectedPriceVal = pricePeriod === 0 
+    ? getNumericPrice(selectedService.price) 
+    : Math.round(getNumericPrice(selectedService.price) * 1.3);
+ 
+  // Synchronize price and tier to context
+  useEffect(() => {
+    if (selectedService) {
+      const basePrice = getNumericPrice(selectedService.price);
+      const computedPrice = pricePeriod === 0 ? basePrice : Math.round(basePrice * 1.3);
+      updateBookingForm('price', computedPrice);
+      updateBookingForm('tier', pricePeriod === 0 ? 'Standard' : 'VIP');
+    }
+  }, [bookingForm.service, pricePeriod, selectedService]);
+ 
+  // When active category changes, auto-select the first service of that category if current is not in it
+  useEffect(() => {
+    const filtered = servicesList.filter(svc => activeCategory === 'All' || svc.category === activeCategory);
+    const exists = filtered.some(svc => svc.name === bookingForm.service);
+    if (!exists && filtered.length > 0) {
+      updateBookingForm('service', filtered[0].name);
+    }
+  }, [activeCategory, servicesList]);
+ 
+  // Automatically switch category based on pre-selected service
   useEffect(() => {
     if (bookingForm.service) {
-      localStorage.setItem('pref_service', bookingForm.service);
+      const svc = servicesList.find(s => s.name === bookingForm.service);
+      if (svc && svc.category) {
+        setActiveCategory(svc.category);
+      }
     }
-  }, [bookingForm.service]);
-
-  useEffect(() => {
-    if (bookingForm.therapist) {
-      localStorage.setItem('pref_therapist', bookingForm.therapist);
-    }
-  }, [bookingForm.therapist]);
-
-  const selectedService  = services.find(s => s.name === bookingForm.service)  || services[0];
+  }, [bookingForm.service, servicesList]);
+ 
+  useEffect(() => { if (bookingForm.service) localStorage.setItem('pref_service', bookingForm.service); }, [bookingForm.service]);
+  useEffect(() => { if (bookingForm.therapist) localStorage.setItem('pref_therapist', bookingForm.therapist); }, [bookingForm.therapist]);
 
   const goNext = () => {
     setError('');
@@ -156,222 +314,450 @@ export default function Booking() {
       if (!bookingForm.service) { setError('Please select a service.'); return; }
       setStep(1);
     } else if (step === 1) {
-      if (!bookingForm.date)   { setError('Please select a date.'); return; }
-      if (!selectedTime)       { setError('Please select a time slot.'); return; }
+      if (!bookingForm.date) { setError('Please select a date.'); return; }
+      if (!selectedTime) { setError('Please select a time slot.'); return; }
       updateBookingForm('time', selectedTime);
       setStep(2);
     } else {
-      triggerAuthRequired(() => {
-        navigate('/checkout');
-      }, "Please login or create an account to continue booking.");
+      triggerAuthRequired(() => navigate('/checkout'), 'Please login or create an account to continue booking.');
     }
   };
-  
   const goBack = () => { setError(''); setStep(s => s - 1); };
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent text-on-surface dark:text-zinc-100 font-body-md overflow-x-hidden pt-20">
+    <SidebarProvider>
       <Navigation />
+      <SidebarInset style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)', color: 'var(--color-text)', overflow: 'hidden' }} className="">
 
-      <main className="flex-1 py-xl px-lg max-w-3xl mx-auto w-full page-transition">
-
-        {/* Header */}
-        <div className="text-center mb-xl">
-          <span className="font-label-caps text-label-caps text-primary dark:text-gold tracking-[0.25em]">RITUAL SCHEDULER</span>
-          <h1 className="font-display-lg text-display-lg text-on-background dark:text-white mt-xs">Reserve Sanctuary</h1>
-          <p className="font-body-md text-on-surface-variant dark:text-zinc-400 mt-sm">Your bespoke wellness journey begins here.</p>
+      {/* Page hero */}
+      <section style={{ paddingTop: '110px', paddingBottom: 'clamp(2.5rem, 5vw, 4rem)', paddingLeft: 'clamp(1.25rem, 5vw, 4rem)', paddingRight: 'clamp(1.25rem, 5vw, 4rem)', textAlign: 'center', borderBottom: '1px solid var(--color-border)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '0', left: '50%', transform: 'translateX(-50%)', width: '500px', height: '250px', background: 'rgba(201,169,110,0.04)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
+        <div className="page-transition" style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ marginBottom: '0.875rem', display: 'flex', justifyContent: 'center' }}>
+            <span className="eyebrow-refined">Appointment Scheduler</span>
+          </div>
+          <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(2.25rem, 5.5vw, 3.75rem)', letterSpacing: '-0.025em', lineHeight: 1.0, color: 'var(--color-text)', margin: '0 0 0.875rem' }}>
+            Reserve Your Spot
+          </h1>
+          <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.9375rem', color: 'var(--color-text-dim)' }}>
+            Your bespoke beauty experience begins here.
+          </p>
         </div>
+      </section>
 
-        {/* Breadcrumbs funnel visual tracker */}
-        <div className="mb-md">
+      <main style={{ flex: 1, padding: 'clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 5vw, 4rem)', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+
+        {/* Breadcrumbs */}
+        <div style={{ marginBottom: '2rem' }}>
           <Breadcrumbs />
         </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="mb-md flex items-center gap-sm p-sm bg-red-950/40 border border-red-500/30 rounded-xl text-red-300 font-body-sm animate-[fadeIn_0.3s_ease]">
-            <span className="material-symbols-outlined text-[18px] text-red-400">error</span>
-            {error}
-          </div>
-        )}
-
-        {/* ─ Step 0: Choose Service & Specialist ───────────────────── */}
-        {step === 0 && (
-          <div className="space-y-md animate-[pageFadeIn_0.4s_ease-out]">
-            <h2 className="font-headline-md text-headline-md text-on-surface dark:text-zinc-100 mb-md">Choose Your Ritual</h2>
-            
-            <div className="space-y-md">
-              {services.map((svc) => (
-                <button
-                  key={svc.name}
-                  type="button"
-                  onClick={() => updateBookingForm('service', svc.name)}
-                  className={`w-full flex items-center gap-lg p-lg rounded-2xl border-2 text-left transition-all duration-300 group custom-cursor-hover
-                    ${bookingForm.service === svc.name
-                      ? 'border-primary dark:border-gold bg-primary/5 dark:bg-gold/5 shadow-lg shadow-primary/10'
-                      : 'border-outline-variant/40 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-primary/50 dark:hover:border-gold/50 hover:shadow-md hover:-translate-y-0.5'
-                    }`}
-                >
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300
-                    ${bookingForm.service === svc.name ? 'bg-primary dark:bg-gold text-white dark:text-zinc-950' : 'bg-surface-container dark:bg-zinc-800 text-primary dark:text-gold group-hover:bg-primary/10'}`}>
-                    <span className="material-symbols-outlined text-[28px]">{svc.icon}</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-headline-md text-[18px] dark:text-white mb-xs">{svc.name}</h3>
-                    <div className="flex gap-md text-on-surface-variant dark:text-zinc-400 font-body-sm">
-                      <span className="flex items-center gap-xs"><span className="material-symbols-outlined text-[14px]">schedule</span>{svc.duration}</span>
-                      <span className="text-primary dark:text-gold font-label-caps">{svc.price}</span>
-                    </div>
-                  </div>
-                  {bookingForm.service === svc.name && (
-                    <span className="material-symbols-outlined text-primary dark:text-gold text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+        {/* Step progress */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0', marginBottom: '3rem' }}>
+          {STEPS.map((label, idx) => (
+            <React.Fragment key={label}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flex: 1 }}>
+                <div style={{
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  border: `1px solid ${idx <= step ? 'var(--champagne)' : 'var(--color-border)'}`,
+                  background: idx < step ? 'var(--champagne)' : idx === step ? 'rgba(201,169,110,0.1)' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.35s ease',
+                }}>
+                  {idx < step ? (
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#0D0D0D' }}>check</span>
+                  ) : (
+                    <span style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px', letterSpacing: '0.1em', color: idx === step ? 'var(--champagne)' : 'var(--color-text-mute)' }}>
+                      0{idx + 1}
+                    </span>
                   )}
-                </button>
-              ))}
-            </div>
+                </div>
+                <span style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.16em', textTransform: 'uppercase', color: idx === step ? 'var(--champagne)' : 'var(--color-text-mute)', transition: 'color 0.35s ease', textAlign: 'center' }}>
+                  {label}
+                </span>
+              </div>
+              {idx < STEPS.length - 1 && (
+                <div style={{ height: '1px', flex: 1, background: idx < step ? 'var(--champagne)' : 'var(--color-border)', marginBottom: '22px', transition: 'background 0.35s ease' }} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
 
-            {/* Therapist selection */}
-            <h2 className="font-headline-md text-headline-md text-on-surface dark:text-zinc-100 pt-md mb-md">Choose Your Professional</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-md">
-              {therapists.map((t) => (
-                <button
-                  key={t.name}
-                  type="button"
-                  onClick={() => updateBookingForm('therapist', t.name)}
-                  className={`flex flex-col items-center p-md rounded-2xl border-2 text-center transition-all duration-300 group custom-cursor-hover min-h-[180px] justify-center
-                    ${bookingForm.therapist === t.name
-                      ? 'border-primary dark:border-gold bg-primary/5 dark:bg-gold/5 shadow-md'
-                      : 'border-outline-variant/40 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-primary/50 dark:hover:border-gold/50 hover:shadow-sm'
-                    }`}
-                >
-                  <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-container dark:bg-zinc-800 mb-sm ring-2 ring-offset-2 dark:ring-offset-zinc-950 transition-all duration-300
-                    ring-transparent group-hover:ring-primary/30 dark:group-hover:ring-gold/30">
-                    {t.img
-                      ? <img src={t.img} alt={t.name} className="w-full h-full object-cover"/>
-                      : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-[32px] text-primary dark:text-gold">{t.icon}</span></div>
-                    }
-                  </div>
-                  <p className="font-headline-md text-[13px] dark:text-white leading-tight">{t.name}</p>
-                  <p className="font-body-sm text-on-surface-variant dark:text-zinc-400 text-[11px] mt-xs">{t.title}</p>
-                  <div className="flex items-center gap-xs mt-xs">
-                    <span className="material-symbols-outlined text-gold text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                    <span className="font-label-caps text-[10px] text-on-surface-variant dark:text-zinc-400">{t.rating}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
+        {/* Error */}
+        {error && (
+          <div style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'rgba(196,137,122,0.08)', border: '1px solid rgba(196,137,122,0.28)', borderRadius: '12px', color: '#C4897A' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px', flexShrink: 0 }}>error</span>
+            <span style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.8125rem', fontWeight: 300 }}>{error}</span>
           </div>
         )}
 
-        {/* ─ Step 1: Date & Time ────────────────────────────────────── */}
-        {step === 1 && (
-          <div className="space-y-lg animate-[pageFadeIn_0.4s_ease-out]">
-            <h2 className="font-headline-md text-headline-md text-on-surface dark:text-zinc-100">Pick Your Date & Time</h2>
-
-            {/* Floating Label Date Selection */}
-            <FloatField
-              label="APPOINTMENT DATE"
-              type="date"
-              value={bookingForm.date}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={(e) => updateBookingForm('date', e.target.value)}
-            />
-
-            {/* Time Slot Picker */}
+        {/* ─── Step 0: Service + Stylist ─── */}
+        {step === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeUp 0.4s ease' }}>
             <div>
-              <p className="font-label-caps text-[10px] text-on-surface-variant dark:text-zinc-400 tracking-widest mb-md">AVAILABLE TIME SLOTS</p>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-sm">
-                {times.map((t) => (
-                  <TimeChip key={t} time={t} selected={selectedTime === t} onClick={() => setSelectedTime(t)} />
-                ))}
+              <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-text)', marginBottom: '1.25rem' }}>Choose Your Service</h2>
+              
+              {/* Category Filter */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '1.5rem' }}>
+                {categories.map(cat => {
+                  const isActive = activeCategory === cat;
+                  return (
+                    <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
+                      style={{
+                        fontFamily: 'Tenor Sans, sans-serif',
+                        fontSize: '9px', letterSpacing: '0.22em', textTransform: 'uppercase',
+                        padding: '9px 20px', borderRadius: '99px',
+                        border: isActive ? '1px solid var(--champagne)' : '1px solid var(--color-border-strong, rgba(255,255,255,0.07))',
+                        background: isActive ? 'var(--champagne)' : 'transparent',
+                        color: isActive ? 'var(--obsidian, #0D0D0D)' : 'var(--color-text-dim)',
+                        cursor: 'pointer',
+                        transition: 'all 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                        fontWeight: isActive ? 500 : 400,
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.borderColor = 'rgba(201,169,110,0.55)';
+                          e.currentTarget.style.color = 'var(--champagne)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.borderColor = 'var(--color-border-strong, rgba(255,255,255,0.07))';
+                          e.currentTarget.style.color = 'var(--color-text-dim)';
+                        }
+                      }}
+                    >{cat}</button>
+                  );
+                })}
+              </div>
+
+              {/* Standard vs VIP Toggle (PricingInteraction Style) */}
+              <div 
+                style={{ 
+                  borderRadius: '99px', 
+                  position: 'relative', 
+                  width: '100%', 
+                  background: 'rgba(255,255,255,0.02)', 
+                  border: '1px solid var(--color-border-strong, rgba(255,255,255,0.07))',
+                  padding: '5px', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  marginBottom: '1.75rem'
+                }}
+              >
+                <button
+                  type="button"
+                  style={{
+                    fontFamily: 'Tenor Sans, sans-serif',
+                    fontSize: '9px',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                    borderRadius: '99px',
+                    width: '50%',
+                    padding: '10px 0',
+                    border: 'none',
+                    background: 'transparent',
+                    color: pricePeriod === 0 ? '#0D0D0D' : 'var(--color-text-dim)',
+                    zIndex: 20,
+                    cursor: 'pointer',
+                    transition: 'color 0.3s',
+                  }}
+                  onClick={() => setPricePeriod(0)}
+                >
+                  Standard Service
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    fontFamily: 'Tenor Sans, sans-serif',
+                    fontSize: '9px',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    fontWeight: 600,
+                    borderRadius: '99px',
+                    width: '50%',
+                    padding: '10px 0',
+                    border: 'none',
+                    background: 'transparent',
+                    color: pricePeriod === 1 ? '#0D0D0D' : 'var(--color-text-dim)',
+                    zIndex: 20,
+                    cursor: 'pointer',
+                    transition: 'color 0.3s',
+                  }}
+                  onClick={() => setPricePeriod(1)}
+                >
+                  VIP Service (+30%)
+                </button>
+                <div
+                  style={{
+                    padding: '5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: '50%',
+                    zIndex: 10,
+                    transform: `translateX(${pricePeriod * 100}%)`,
+                    transition: "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                  }}
+                >
+                  <div style={{ background: 'var(--champagne)', borderRadius: '99px', width: '100%', height: '100%' }}></div>
+                </div>
+              </div>
+
+              {/* Services List with Sliding Highlight */}
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {(() => {
+                  const filteredServices = servicesList.filter(svc => activeCategory === 'All' || svc.category === activeCategory);
+                  const selectedIndex = filteredServices.findIndex(svc => svc.name === bookingForm.service);
+                  return (
+                    <>
+                      {filteredServices.map((svc) => {
+                        const sel = bookingForm.service === svc.name;
+                        const priceVal = pricePeriod === 0 ? getNumericPrice(svc.price) : Math.round(getNumericPrice(svc.price) * 1.3);
+                        return (
+                          <button key={svc.name} type="button" onClick={() => updateBookingForm('service', svc.name)}
+                            style={{
+                              height: '96px',
+                              width: '100%', display: 'flex', alignItems: 'center', gap: '1.25rem',
+                              padding: '1rem 1.25rem',
+                              borderRadius: '18px',
+                              border: `1px solid ${sel ? 'transparent' : 'var(--color-border)'}`,
+                              background: sel ? 'rgba(201,169,110,0.04)' : 'var(--color-surface)',
+                              cursor: 'pointer', textAlign: 'left',
+                              transition: 'all 0.28s cubic-bezier(0.25,0.46,0.45,0.94)',
+                            }}
+                            onMouseEnter={e => { if (!sel) { e.currentTarget.style.borderColor = 'rgba(201,169,110,0.3)'; } }}
+                            onMouseLeave={e => { if (!sel) { e.currentTarget.style.borderColor = 'var(--color-border)'; } }}
+                          >
+                            <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: sel ? 'var(--champagne)' : 'rgba(201,169,110,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.25s ease' }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: sel ? '#0D0D0D' : 'var(--champagne)' }}>{svc.icon}</span>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.05rem', color: 'var(--color-text)', margin: '0 0 0.15rem' }}>{svc.name}</h3>
+                              <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.8rem', color: 'var(--color-text-dim)' }}>
+                                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>schedule</span>
+                                  {svc.duration}
+                                </span>
+                                <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.05rem', color: 'var(--champagne)' }}>
+                                  $&nbsp;
+                                  <NumberFlow value={priceVal} format={{ minimumFractionDigits: 0, maximumFractionDigits: 0 }} />
+                                </span>
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                border: '2px solid',
+                                borderColor: sel ? 'var(--champagne)' : 'var(--color-border-strong, rgba(255,255,255,0.15))',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                padding: '3px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'border-color 0.3s',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '10px',
+                                  height: '10px',
+                                  background: 'var(--champagne)',
+                                  borderRadius: '50%',
+                                  opacity: sel ? 1 : 0,
+                                  transform: sel ? 'scale(1)' : 'scale(0.5)',
+                                  transition: 'opacity 0.3s, transform 0.3s',
+                                }}
+                              />
+                            </div>
+                          </button>
+                        );
+                      })}
+
+                      {/* Sliding Border Overlay */}
+                      {selectedIndex >= 0 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            height: '96px',
+                            border: '2px solid var(--champagne)',
+                            borderRadius: '18px',
+                            pointerEvents: 'none',
+                            transform: `translateY(${selectedIndex * (96 + 12)}px)`,
+                            transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                            boxShadow: '0 0 16px rgba(201,169,110,0.12)',
+                            zIndex: 10,
+                          }}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
-            {/* Summary preview bar */}
-            {bookingForm.date && selectedTime && (
-              <div className="flex items-center gap-md p-md bg-primary/5 dark:bg-gold/5 border border-primary/15 dark:border-gold/15 rounded-2xl animate-[fadeIn_0.4s_ease]">
-                <span className="material-symbols-outlined text-primary dark:text-gold text-[28px]">event_available</span>
+            <div>
+              <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-text)', marginBottom: '1.25rem' }}>Choose Your Stylist</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '1rem' }}>
+                {stylistsList.map((t) => {
+                  const sel = bookingForm.therapist === t.name;
+                  return (
+                    <SpotlightCard
+                      key={t.name}
+                      spotlightColor="rgba(201, 169, 110, 0.14)"
+                      onClick={() => updateBookingForm('therapist', t.name)}
+                      role="button"
+                      tabIndex={0}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        padding: '1.375rem 1rem',
+                        borderRadius: '18px',
+                        border: `1px solid ${sel ? 'var(--champagne)' : 'var(--color-border)'}`,
+                        background: sel ? 'rgba(201,169,110,0.06)' : 'var(--color-surface)',
+                        cursor: 'pointer', textAlign: 'center',
+                        boxShadow: sel ? '0 0 0 3px rgba(201,169,110,0.1)' : 'none',
+                        outline: 'none',
+                      }}
+                      onMouseEnter={e => { if (!sel) { e.currentTarget.style.borderColor = 'rgba(201,169,110,0.35)'; e.currentTarget.style.transform = 'translateY(-3px)'; } }}
+                      onMouseLeave={e => { if (!sel) { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.transform = 'none'; } }}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); updateBookingForm('therapist', t.name); } }}
+                    >
+                      <div style={{ width: '58px', height: '58px', borderRadius: '50%', overflow: 'hidden', background: 'rgba(201,169,110,0.08)', marginBottom: '0.875rem', border: `2px solid ${sel ? 'var(--champagne)' : 'transparent'}`, transition: 'border-color 0.25s ease', flexShrink: 0 }}>
+                        {t.img
+                          ? <img src={t.img} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
+                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--champagne)' }}>{t.icon}</span></div>
+                        }
+                      </div>
+                      <p style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '0.9375rem', color: 'var(--color-text)', margin: '0 0 2px' }}>{t.name}</p>
+                      <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.75rem', color: 'var(--color-text-dim)', margin: '0 0 6px' }}>{t.title}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '12px', color: 'var(--champagne)', fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px', letterSpacing: '0.1em', color: 'var(--color-text-dim)' }}>{t.rating}</span>
+                      </div>
+                    </SpotlightCard>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Step 1: Date + Time ─── */}
+        {step === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', animation: 'fadeUp 0.4s ease' }}>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-text)' }}>Pick Your Date &amp; Time</h2>
+
+            <CalendarWithTimePresets
+              selectedDate={calendarDate}
+              onSelectDate={handleSelectDate}
+              selectedTime={selectedTime}
+              onSelectTime={setSelectedTime}
+              onContinue={goNext}
+            />
+          </div>
+        )}
+
+        {/* ─── Step 2: Review ─── */}
+        {step === 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeUp 0.4s ease' }}>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(1.5rem, 3vw, 2rem)', color: 'var(--color-text)' }}>Review Your Booking</h2>
+
+            <div style={{ borderRadius: '20px', border: '1px solid var(--color-border)', overflow: 'hidden', background: 'var(--color-surface)' }}>
+              {/* Hero header */}
+              <div style={{ background: 'linear-gradient(135deg, var(--champagne-dk), var(--champagne))', padding: '1.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(13,13,13,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#0D0D0D' }}>content_cut</span>
+                </div>
                 <div>
-                  <p className="font-headline-md text-[15px] dark:text-white">{bookingForm.service}</p>
-                  <p className="font-body-sm text-on-surface-variant dark:text-zinc-400">
-                    {bookingForm.date} at {selectedTime} · {bookingForm.therapist}
+                  <p style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(13,13,13,0.6)', margin: '0 0 3px' }}>Your Service</p>
+                  <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: 'clamp(1.25rem, 3vw, 1.625rem)', color: '#0D0D0D', margin: 0 }}>{bookingForm.service}</h3>
+                  <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.875rem', color: 'rgba(13,13,13,0.65)', margin: '2px 0 0' }}>
+                    {selectedService.duration} · ${selectedPriceVal} {bookingForm.tier === 'VIP' && '(VIP Tier)'}
                   </p>
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* ─ Step 2: Review & Confirm ───────────────────────────────── */}
-        {step === 2 && (
-          <div className="space-y-md animate-[pageFadeIn_0.4s_ease-out]">
-            <h2 className="font-headline-md text-headline-md text-on-surface dark:text-zinc-100 mb-md">Review Your Booking</h2>
-
-            <div className="glass-card-light dark:bg-zinc-900 rounded-2xl border border-gold/15 dark:border-zinc-800 overflow-hidden shadow-xl">
-              {/* Hero summary */}
-              <div className="bg-primary dark:bg-gold text-white dark:text-zinc-950 p-lg flex items-center gap-lg">
-                <div className="w-16 h-16 rounded-full bg-white/15 dark:bg-zinc-950/15 flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined text-[32px] text-gold dark:text-zinc-950">spa</span>
-                </div>
-                <div>
-                  <p className="font-label-caps text-[10px] text-primary-fixed dark:text-zinc-800 tracking-widest">YOUR RITUAL</p>
-                  <h3 className="font-headline-lg text-[22px]">{bookingForm.service}</h3>
-                  <p className="font-body-sm opacity-90">{selectedService.duration} · {selectedService.price}</p>
-                </div>
-              </div>
-
-              {/* Details rows */}
+              {/* Detail rows */}
               {[
-                { icon: 'person',          label: 'PROFESSIONAL', value: bookingForm.therapist },
-                { icon: 'calendar_month',  label: 'DATE',         value: bookingForm.date      },
-                { icon: 'schedule',        label: 'TIME',         value: bookingForm.time || selectedTime },
+                { icon: 'person', label: 'Professional', value: bookingForm.therapist },
+                { icon: 'calendar_month', label: 'Date', value: bookingForm.date },
+                { icon: 'schedule', label: 'Time', value: bookingForm.time || selectedTime },
               ].map(({ icon, label, value }) => (
-                <div key={label} className="flex items-center gap-lg px-lg py-md border-b border-outline-variant/20 dark:border-zinc-800/60 last:border-none">
-                  <span className="material-symbols-outlined text-primary dark:text-gold text-[20px] w-6 text-center">{icon}</span>
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.125rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--champagne)', width: '20px', textAlign: 'center', flexShrink: 0 }}>{icon}</span>
                   <div>
-                    <p className="font-label-caps text-[9px] text-on-surface-variant dark:text-zinc-400 tracking-widest">{label}</p>
-                    <p className="font-headline-md text-[15px] dark:text-zinc-100">{value || '—'}</p>
+                    <p style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-mute)', margin: 0 }}>{label}</p>
+                    <p style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.0625rem', color: 'var(--color-text)', margin: '2px 0 0' }}>{value || '—'}</p>
                   </div>
                 </div>
               ))}
 
               {/* Price row */}
-              <div className="px-lg py-md flex justify-between items-center bg-surface-container-low dark:bg-zinc-950/40">
-                <span className="font-label-caps text-on-surface-variant dark:text-zinc-400">TOTAL DUE TODAY</span>
-                <span className="font-headline-lg text-headline-lg text-primary dark:text-gold">{selectedService.price}</span>
+              <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(201,169,110,0.03)' }}>
+                <span style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-mute)' }}>
+                  Total Due Today {bookingForm.tier === 'VIP' && '(incl. VIP Upgrade)'}
+                </span>
+                <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.625rem', color: 'var(--champagne)' }}>
+                  ${selectedPriceVal}
+                </span>
               </div>
             </div>
 
-            <p className="text-center font-body-sm text-on-surface-variant dark:text-zinc-400 text-[11px]">
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.8125rem', color: 'var(--color-text-mute)', textAlign: 'center' }}>
               Free cancellation up to 24 hours before your appointment.
             </p>
           </div>
         )}
 
-        {/* ─ Navigation Buttons ─────────────────────────────────────── */}
-        <div className={`mt-xl flex ${step > 0 ? 'justify-between' : 'justify-end'} items-center`}>
+        {/* Navigation buttons */}
+        <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: step > 0 ? 'space-between' : 'flex-end', alignItems: 'center', gap: '1rem' }}>
           {step > 0 && (
-            <button
-              type="button"
-              onClick={goBack}
-              className="flex items-center gap-sm text-on-surface-variant dark:text-zinc-400 font-label-caps hover:text-primary dark:hover:text-gold transition-colors duration-200 group"
+            <button type="button" onClick={goBack}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                fontFamily: 'Tenor Sans, sans-serif', fontSize: '9px',
+                letterSpacing: '0.2em', textTransform: 'uppercase',
+                color: 'var(--color-text-dim)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                transition: 'color 0.2s ease',
+                padding: '10px 0',
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--champagne)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-dim)'}
             >
-              <span className="material-symbols-outlined text-[18px] group-hover:-translate-x-1 transition-transform duration-200">arrow_back</span>
-              BACK
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_back</span>
+              Back
             </button>
           )}
-          <button
-            type="button"
-            onClick={goNext}
-            className="shimmer-btn flex items-center gap-sm bg-primary dark:bg-gold text-white dark:text-zinc-950 font-label-caps px-xl py-md rounded-full shadow-lg shadow-primary/20 hover:bg-primary-container dark:hover:bg-yellow-500 transition-all duration-300"
+          <button type="button" onClick={goNext}
+            className="shimmer-btn"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: 'var(--champagne)', color: '#0D0D0D',
+              fontFamily: 'Tenor Sans, sans-serif', fontSize: '10px',
+              letterSpacing: '0.22em', textTransform: 'uppercase',
+              padding: '14px 32px', borderRadius: '99px',
+              border: 'none', cursor: 'pointer', minHeight: '50px', fontWeight: 500,
+            }}
           >
-            {step < 2 ? 'CONTINUE' : 'PROCEED TO CHECKOUT'}
-            <span className="material-symbols-outlined text-[18px]">{step < 2 ? 'arrow_forward' : 'lock'}</span>
+            {step < 2 ? 'Continue' : 'Proceed to Checkout'}
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{step < 2 ? 'arrow_forward' : 'lock'}</span>
           </button>
         </div>
       </main>
 
       <Footer />
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

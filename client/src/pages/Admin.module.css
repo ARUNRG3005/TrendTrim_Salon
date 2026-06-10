@@ -1,0 +1,21 @@
+/* Admin-specific styles */
+
+/* Ensure Material Symbols are visible in admin panel */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+  transition: font-variation-settings 0.3s ease;
+}
+
+.material-symbols-outlined:hover {
+  font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Additional admin UI tweaks */
+.adminSidebarIcon {
+  font-size: 20px;
+  color: var(--champagne);
+}
+
+.adminActiveIcon {
+  color: #a37f4c; /* matches existing active color */
+}

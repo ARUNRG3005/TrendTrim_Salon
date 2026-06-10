@@ -1,102 +1,286 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
+import useScrollReveal from '../hooks/useScrollReveal';
+import { SidebarProvider, SidebarInset } from '../components/ui/sidebar';
+import { ChromaGrid } from '../components/ui/ChromaGrid';
+
+const signatureStyles = [
+  {
+    image: "https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80",
+    title: "Golden Balayage",
+    subtitle: "By David Chen",
+    handle: "@davidchen_color",
+    borderColor: "var(--champagne)",
+    gradient: "linear-gradient(145deg, var(--champagne-dk), #0D0D0D)",
+    url: "/booking"
+  },
+  {
+    image: "https://images.unsplash.com/photo-1595853035070-59a39fe84de3?auto=format&fit=crop&w=600&q=80",
+    title: "Editorial Event Updo",
+    subtitle: "By Jessica Monroe",
+    handle: "@jessica_monroe",
+    borderColor: "#C4897A",
+    gradient: "linear-gradient(145deg, #C4897A, #0D0D0D)",
+    url: "/booking"
+  },
+  {
+    image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=600&q=80",
+    title: "Glass Gel Nail Art",
+    subtitle: "By Nail Artistry Lab",
+    handle: "@trendtrim_nails",
+    borderColor: "#7A8C7E",
+    gradient: "linear-gradient(145deg, #7A8C7E, #0D0D0D)",
+    url: "/booking"
+  },
+  {
+    image: "https://images.unsplash.com/photo-1605497746444-ac9dbd324ce8?auto=format&fit=crop&w=600&q=80",
+    title: "Precision Bob Cut",
+    subtitle: "By David Chen",
+    handle: "@david_hair",
+    borderColor: "#E2C98A",
+    gradient: "linear-gradient(145deg, #E2C98A, #0D0D0D)",
+    url: "/booking"
+  },
+  {
+    image: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=600&q=80",
+    title: "Photographic Glamour",
+    subtitle: "By Jessica Monroe",
+    handle: "@jessica_glam",
+    borderColor: "#9B7B45",
+    gradient: "linear-gradient(145deg, #9B7B45, #0D0D0D)",
+    url: "/booking"
+  },
+  {
+    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80",
+    title: "Executive Grooming",
+    subtitle: "By Grooming Atelier",
+    handle: "@grooming_luxe",
+    borderColor: "#6E6860",
+    gradient: "linear-gradient(145deg, #6E6860, #0D0D0D)",
+    url: "/booking"
+  }
+];
+
+const getServiceImage = (serviceName) => {
+  const name = (serviceName || '').toLowerCase();
+  if (name.includes('color') || name.includes('balayage') || name.includes('blonde') || name.includes('highlight') || name.includes('glaze')) {
+    return "https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80";
+  }
+  if (name.includes('nail') || name.includes('manicure') || name.includes('pedicure') || name.includes('mani')) {
+    return "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=600&q=80";
+  }
+  if (name.includes('makeup') || name.includes('glamour') || name.includes('brow') || name.includes('facial') || name.includes('eyebrow')) {
+    return "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=600&q=80";
+  }
+  if (name.includes('grooming') || name.includes('shave') || name.includes('beard') || name.includes('men')) {
+    return "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=600&q=80";
+  }
+  return "https://images.unsplash.com/photo-1605497746444-ac9dbd324ce8?auto=format&fit=crop&w=600&q=80";
+};
+
+const getServiceCategoryColors = (serviceName) => {
+  const name = (serviceName || '').toLowerCase();
+  if (name.includes('color') || name.includes('balayage') || name.includes('blonde') || name.includes('highlight') || name.includes('glaze')) {
+    return {
+      border: 'var(--champagne)',
+      gradient: 'linear-gradient(145deg, var(--champagne-dk), #0D0D0D)'
+    };
+  }
+  if (name.includes('nail') || name.includes('manicure') || name.includes('pedicure') || name.includes('mani')) {
+    return {
+      border: '#7A8C7E',
+      gradient: 'linear-gradient(145deg, #7A8C7E, #0D0D0D)'
+    };
+  }
+  if (name.includes('makeup') || name.includes('glamour') || name.includes('brow') || name.includes('facial') || name.includes('eyebrow')) {
+    return {
+      border: '#C4897A',
+      gradient: 'linear-gradient(145deg, #C4897A, #0D0D0D)'
+    };
+  }
+  if (name.includes('grooming') || name.includes('shave') || name.includes('beard') || name.includes('men')) {
+    return {
+      border: '#6E6860',
+      gradient: 'linear-gradient(145deg, #6E6860, #0D0D0D)'
+    };
+  }
+  return {
+    border: '#E2C98A',
+    gradient: 'linear-gradient(145deg, #E2C98A, #0D0D0D)'
+  };
+};
 
 export default function Portfolio() {
   const { user } = useAuth();
-  const { myBookings, cancelBooking } = useBooking();
+  const { myBookings, fetchBookings, cancelBooking } = useBooking();
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (user) {
+      fetchBookings();
+    }
+  }, [user, fetchBookings]);
+
+  useScrollReveal();
+
+  const displayName = user?.name || 'Eleanor Vane';
+  const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <div className="relative z-10 min-h-screen flex flex-col bg-transparent text-on-surface dark:text-zinc-100 font-body-md overflow-x-hidden pt-20">
+    <SidebarProvider>
       <Navigation />
+      <SidebarInset style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)', color: 'var(--color-text)', overflow: 'hidden' }} className="">
 
-      <main className="flex-1 py-xl px-lg max-w-container-max mx-auto w-full">
-        
-        {/* User Card */}
-        <div className="glass-card-light dark:bg-zinc-900/60 rounded-2xl p-lg border border-gold/10 dark:border-zinc-800/80 shadow-lg flex flex-col md:flex-row items-center justify-between gap-md mb-xl">
-          <div className="flex items-center gap-md">
-            <div className="w-16 h-16 rounded-full bg-primary-fixed-dim/30 dark:bg-gold/10 flex items-center justify-center text-primary dark:text-gold">
-              <span className="material-symbols-outlined text-[36px]">account_circle</span>
+      {/* Page hero */}
+      <section style={{ paddingTop: '110px', paddingBottom: 'clamp(2.5rem, 5vw, 4rem)', paddingLeft: 'clamp(1.25rem, 5vw, 4rem)', paddingRight: 'clamp(1.25rem, 5vw, 4rem)', textAlign: 'center', borderBottom: '1px solid var(--color-border)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '450px', height: '220px', background: 'rgba(201,169,110,0.04)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
+        <div className="page-transition" style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ marginBottom: '0.875rem', display: 'flex', justifyContent: 'center' }}>
+            <span className="eyebrow-refined">My Portfolio</span>
+          </div>
+          <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(2.25rem, 5.5vw, 3.75rem)', letterSpacing: '-0.025em', lineHeight: 1.0, color: 'var(--color-text)', margin: 0 }}>
+            Your Appointments
+          </h1>
+        </div>
+      </section>
+
+      <main style={{ flex: 1, padding: 'clamp(3rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem)', maxWidth: '1280px', margin: '0 auto', width: '100%' }}>
+
+        {/* User card */}
+        <div className="reveal" style={{
+          borderRadius: '22px', border: '1px solid var(--color-border)',
+          background: 'var(--color-surface)',
+          padding: 'clamp(1.5rem, 3vw, 2.25rem)',
+          marginBottom: '3rem',
+          display: 'flex', flexWrap: 'wrap',
+          alignItems: 'center', justifyContent: 'space-between', gap: '2rem',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Subtle glow */}
+          <div style={{ position: 'absolute', top: '-30%', right: '5%', width: '250px', height: '250px', background: 'rgba(201,169,110,0.04)', borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.125rem', position: 'relative', zIndex: 1 }}>
+            {/* Avatar */}
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--champagne-dk), var(--champagne))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0D0D0D', fontFamily: 'Tenor Sans', fontSize: '18px', letterSpacing: '0.05em', fontWeight: 600, flexShrink: 0 }}>
+              {initials}
             </div>
             <div>
-              <h2 className="font-headline-lg text-headline-lg text-primary dark:text-gold">{user?.name || 'Eleanor Vane'}</h2>
-              <p className="font-label-caps text-[10px] text-on-surface-variant dark:text-zinc-400">{user?.email || 'eleanor@luxebook.com'}</p>
+              <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', color: 'var(--champagne)', margin: 0 }}>
+                {displayName}
+              </h2>
+              <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.8125rem', color: 'var(--color-text-dim)', margin: '2px 0 0' }}>
+                {user?.email || 'member@trendtrim.com'}
+              </p>
             </div>
           </div>
-          <div className="flex gap-lg text-center">
+
+          <div style={{ display: 'flex', gap: '2.5rem', textAlign: 'center', position: 'relative', zIndex: 1 }}>
             <div>
-              <span className="font-headline-md text-gold text-2xl font-bold">{user?.tier || 'PLATINUM'}</span>
-              <p className="font-label-caps text-[9px] text-on-surface-variant dark:text-zinc-400">MEMBERSHIP STATUS</p>
+              <p style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.625rem', color: 'var(--champagne)', margin: 0 }}>{user?.tier || 'PLATINUM'}</p>
+              <p style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-mute)', margin: '3px 0 0' }}>Membership Status</p>
             </div>
-            <div className="border-l border-outline-variant/30 dark:border-zinc-800/40 pl-lg">
-              <span className="font-headline-md text-primary dark:text-zinc-100 text-2xl font-bold">{myBookings.length}</span>
-              <p className="font-label-caps text-[9px] text-on-surface-variant dark:text-zinc-400">TOTAL APPOINTMENTS</p>
+            <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '2.5rem' }}>
+              <p style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, fontSize: '1.625rem', color: 'var(--color-text)', margin: 0 }}>{myBookings.length}</p>
+              <p style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--color-text-mute)', margin: '3px 0 0' }}>Total Appointments</p>
             </div>
           </div>
         </div>
 
-        {/* Scheduled Appointments */}
-        <div className="space-y-md">
-          <h3 className="font-headline-lg text-headline-lg text-primary dark:text-gold">Scheduled Treatments</h3>
-          
-          {myBookings.length === 0 ? (
-            <div className="text-center py-lg glass-card-light dark:bg-zinc-900/60 rounded-2xl border border-outline-variant/20 dark:border-zinc-800/40 text-on-surface-variant dark:text-zinc-300 font-body-sm">
-              No appointments reserved. Click "Booking" above to schedule a treatment.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-              {myBookings.map((b) => (
-                <div key={b.id} className="glass-card-light dark:bg-zinc-900/60 rounded-2xl p-lg border border-gold/10 dark:border-zinc-800/80 shadow-md flex flex-col justify-between">
-                  <div className="space-y-sm">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="font-label-caps text-[9px] bg-primary/10 text-primary dark:bg-gold/10 dark:text-gold px-sm py-0.5 rounded-full">
-                          {b.id}
-                        </span>
-                        <h4 className="font-headline-md text-headline-md text-primary dark:text-gold mt-xs">{b.service}</h4>
-                      </div>
-                      <span className={`font-label-caps text-[10px] font-bold px-sm py-1 rounded-full ${
-                        b.status === 'CONFIRMED' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300' 
-                          : 'bg-gray-100 text-gray-800 dark:bg-zinc-800 dark:text-zinc-300'
-                      }`}>
-                        {b.status}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-sm text-body-sm pt-sm border-t border-outline-variant/10 dark:border-zinc-800/20">
-                      <div>
-                        <p className="text-on-surface-variant dark:text-zinc-400 text-[11px] font-label-caps">SPECIALIST</p>
-                        <p className="font-semibold">{b.therapist}</p>
-                      </div>
-                      <div>
-                        <p className="text-on-surface-variant dark:text-zinc-400 text-[11px] font-label-caps">SCHEDULE</p>
-                        <p className="font-semibold">{b.date} at {b.time}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {b.status === 'CONFIRMED' && (
-                    <div className="flex justify-end pt-md border-t border-outline-variant/10 dark:border-zinc-800/20 mt-md">
-                      <button
-                        onClick={() => cancelBooking(b.id)}
-                        className="text-red-600 hover:text-red-800 font-label-caps text-label-caps text-xs border border-red-200 hover:bg-red-50 dark:border-red-900/30 dark:hover:bg-red-950/20 px-md py-1.5 rounded-lg transition-all"
-                      >
-                        Cancel Booking
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Section header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', color: 'var(--color-text)', margin: 0 }}>
+            Scheduled Appointments
+          </h3>
+          <button onClick={() => navigate('/booking')}
+            className="nav-cta-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>add</span>
+            New Appointment
+          </button>
         </div>
 
+        {/* Bookings */}
+        {myBookings.length === 0 ? (
+          <div className="reveal" style={{ textAlign: 'center', padding: 'clamp(3rem, 6vw, 5rem)', borderRadius: '20px', border: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(201,169,110,0.07)', border: '1px solid rgba(201,169,110,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.375rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--champagne)' }}>calendar_month</span>
+            </div>
+            <h4 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: '1.5rem', color: 'var(--color-text)', margin: '0 0 0.75rem' }}>No Appointments Yet</h4>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.9rem', color: 'var(--color-text-dim)', maxWidth: '300px', margin: '0 auto 1.75rem', lineHeight: 1.7 }}>
+              Ready to indulge? Reserve your first luxury salon experience.
+            </p>
+            <button onClick={() => navigate('/booking')}
+              className="shimmer-btn"
+              style={{
+                background: 'var(--champagne)', color: '#0D0D0D',
+                padding: '13px 28px', borderRadius: '99px',
+                fontFamily: 'Tenor Sans, sans-serif', fontSize: '10px',
+                letterSpacing: '0.2em', textTransform: 'uppercase',
+                border: 'none', cursor: 'pointer', minHeight: '46px', fontWeight: 500,
+              }}
+            >
+              Book Now
+            </button>
+          </div>
+        ) : (
+          <div style={{ position: 'relative', minHeight: '380px', paddingBottom: '1rem' }} className="reveal">
+            <ChromaGrid 
+              className="appointments-grid"
+              items={myBookings.map((b) => {
+                const colors = getServiceCategoryColors(b.service);
+                return {
+                  image: null,
+                  title: b.service,
+                  subtitle: `${b.therapist} (${b.status})`,
+                  handle: b.id,
+                  location: `${b.date} at ${b.time}`,
+                  borderColor: colors.border,
+                  gradient: colors.gradient,
+                  url: null,
+                  onCancel: b.status === 'CONFIRMED' ? () => cancelBooking(b.id) : null,
+                };
+              })}
+              radius={280}
+              columns={Math.min(3, myBookings.length)}
+              rows={Math.ceil(myBookings.length / 3)}
+              damping={0.4}
+              fadeOut={0.5}
+            />
+          </div>
+        )}
+
+        {/* Curated Style Showcase Section */}
+        <div className="reveal" style={{ marginTop: '5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '2.5rem' }}>
+            <span className="eyebrow-refined" style={{ color: 'var(--champagne)' }}>Signature Creations</span>
+            <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 400, fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', color: 'var(--color-text)', margin: '0.5rem 0 0.75rem' }}>
+              Curated Style Showcase
+            </h3>
+            <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.9rem', color: 'var(--color-text-dim)', maxWidth: '500px', margin: 0, lineHeight: 1.6 }}>
+              Explore our master stylists' latest creations. Hover to reveal the vibrant colors, and click to reserve a style for your next session.
+            </p>
+          </div>
+
+          <div style={{ position: 'relative', minHeight: '520px', paddingBottom: '2rem' }}>
+            <ChromaGrid 
+              items={signatureStyles}
+              radius={280}
+              columns={3}
+              rows={2}
+              damping={0.4}
+              fadeOut={0.5}
+            />
+          </div>
+        </div>
       </main>
 
       <Footer />
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

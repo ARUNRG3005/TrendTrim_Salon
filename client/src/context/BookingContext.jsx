@@ -6,7 +6,7 @@ const BookingContext = createContext();
 export const BookingProvider = ({ children }) => {
   const { user } = useAuth();
   const [bookingForm, setBookingForm] = useState({
-    service: 'Signature Facial',
+    service: 'Signature Haircut & Style',
     date: '',
     therapist: 'Any Professional'
   });
@@ -28,10 +28,11 @@ export const BookingProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setMyBookings(data);
+        localStorage.setItem(`trendtrim_bookings_${user?.email}`, JSON.stringify(data));
       }
     } catch (e) {
       // Local storage fallback for offline use
-      const stored = localStorage.getItem(`luxebook_bookings_${user?.email}`);
+      const stored = localStorage.getItem(`trendtrim_bookings_${user?.email}`);
       if (stored) {
         setMyBookings(JSON.parse(stored));
       } else {
@@ -39,25 +40,25 @@ export const BookingProvider = ({ children }) => {
         const mock = [
           {
             id: 'BK-8891',
-            service: 'Sculpting Facial',
+            service: 'Premium Color & Highlights',
             date: '2026-06-15',
             time: '14:00',
-            therapist: 'Dr. Sarah Sterling',
+            therapist: 'Jessica Monroe',
             status: 'CONFIRMED',
-            price: 240
+            price: 180
           },
           {
             id: 'BK-4530',
-            service: 'Deep Tissue Spa',
+            service: 'Signature Haircut & Style',
             date: '2026-05-20',
             time: '10:30',
-            therapist: 'Master Therapist Julian',
+            therapist: 'David Chen',
             status: 'COMPLETED',
-            price: 180
+            price: 95
           }
         ];
         setMyBookings(mock);
-        localStorage.setItem(`luxebook_bookings_${user?.email}`, JSON.stringify(mock));
+        localStorage.setItem(`trendtrim_bookings_${user?.email}`, JSON.stringify(mock));
       }
     }
   };
@@ -68,7 +69,25 @@ export const BookingProvider = ({ children }) => {
       ...bookingForm,
       ...bookingDetails,
       status: 'CONFIRMED',
-      price: bookingForm.service === 'Signature Facial' ? 195 : bookingForm.service === 'Deep Tissue Spa' ? 180 : 220
+      status: 'CONFIRMED',
+      price: bookingDetails.price || bookingForm.price || (bookingForm.service === 'Signature Haircut & Style' ? 95 : bookingForm.service === 'Premium Color & Highlights' ? 180 : 250)
+    };
+
+    const notifyAdmin = (booking) => {
+      const existingStr = localStorage.getItem('trendtrim_admin_notifications') || '[]';
+      let existing = [];
+      try { existing = JSON.parse(existingStr); } catch (e) { }
+      const newNotif = {
+        id: Date.now(),
+        type: 'BOOKING',
+        booking: booking,
+        text: `New Booking: ${booking.service} for ${user?.name || user?.email || 'Guest'}`,
+        read: false,
+        time: 'Just now'
+      };
+      existing.unshift(newNotif);
+      localStorage.setItem('trendtrim_admin_notifications', JSON.stringify(existing));
+      window.dispatchEvent(new Event('trendtrim_booking_created'));
     };
 
     try {
@@ -79,14 +98,20 @@ export const BookingProvider = ({ children }) => {
       });
       if (response.ok) {
         const saved = await response.json();
-        setMyBookings(prev => [saved, ...prev]);
+        setMyBookings(prev => {
+          const updated = [saved, ...prev];
+          localStorage.setItem(`trendtrim_bookings_${user?.email}`, JSON.stringify(updated));
+          return updated;
+        });
+        notifyAdmin(saved);
         return saved;
       }
     } catch (e) {
       // Offline fallback
       const updated = [newBooking, ...myBookings];
       setMyBookings(updated);
-      localStorage.setItem(`luxebook_bookings_${user?.email}`, JSON.stringify(updated));
+      localStorage.setItem(`trendtrim_bookings_${user?.email}`, JSON.stringify(updated));
+      notifyAdmin(newBooking);
       return newBooking;
     }
   };
@@ -97,13 +122,17 @@ export const BookingProvider = ({ children }) => {
         method: 'DELETE'
       });
       if (response.ok) {
-        setMyBookings(prev => prev.filter(b => b.id !== id));
+        setMyBookings(prev => {
+          const updated = prev.filter(b => b.id !== id);
+          localStorage.setItem(`trendtrim_bookings_${user?.email}`, JSON.stringify(updated));
+          return updated;
+        });
       }
     } catch (e) {
       // Offline fallback
       const updated = myBookings.filter(b => b.id !== id);
       setMyBookings(updated);
-      localStorage.setItem(`luxebook_bookings_${user?.email}`, JSON.stringify(updated));
+      localStorage.setItem(`trendtrim_bookings_${user?.email}`, JSON.stringify(updated));
     }
   };
 
