@@ -37,3 +37,8 @@ lerna-debug.log*
 
 # AI/Assistant workspaces
 .gemini/
+
+# SQLite database files (project uses PostgreSQL)
+*.db
+*.sqlite
+*.sqlite3
