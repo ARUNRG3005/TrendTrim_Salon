@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.VITE_BASE_PATH ?? '/LuxeBook-Widget/',
+  base: '/',
   plugins: [react()],
   assetsInclude: ['**/*.glb', '**/*.mp4'],
   resolve: {
