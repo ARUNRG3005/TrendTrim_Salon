@@ -1,0 +1,127 @@
+.carousel-container {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(201, 169, 110, 0.15);
+  border-radius: 20px;
+  padding: 24px;
+  background-color: #0D0D0D;
+  margin: 0 auto;
+  --outer-r: 20px;
+  --p-distance: 12px;
+}
+
+.carousel-track {
+  display: flex;
+}
+
+.carousel-item {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  border: 1px solid rgba(201, 169, 110, 0.12);
+  border-radius: 16px;
+  background-color: #141414;
+  overflow: hidden;
+  cursor: grab;
+  height: 240px; /* Fixed elegant height */
+}
+
+.carousel-item:active {
+  cursor: grabbing;
+}
+
+.carousel-container.round {
+  border: 1px solid rgba(201, 169, 110, 0.15);
+}
+
+.carousel-item.round {
+  background-color: #141414;
+  position: relative;
+  bottom: 0.1em;
+  border: 1px solid rgba(201, 169, 110, 0.15);
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.carousel-item-header.round {
+  padding: 0;
+  margin: 0;
+}
+
+.carousel-indicators-container.round {
+  position: absolute;
+  z-index: 2;
+  bottom: 3em;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.carousel-item-header {
+  margin-bottom: 12px;
+  padding: 24px 24px 0;
+}
+
+.carousel-icon-container {
+  display: flex;
+  height: 48px;
+  width: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(201, 169, 110, 0.28);
+  background-color: rgba(201, 169, 110, 0.04);
+}
+
+.carousel-item-content {
+  padding: 0 24px 24px;
+}
+
+.carousel-item-title {
+  margin-bottom: 6px;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 500;
+  font-size: 20px;
+  color: #F5F0E8;
+}
+
+.carousel-item-description {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  color: rgba(245, 240, 232, 0.65);
+  line-height: 1.6;
+}
+
+.carousel-indicators-container {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.carousel-indicators {
+  margin-top: 20px;
+  display: flex;
+  width: 120px;
+  justify-content: space-between;
+}
+
+.carousel-indicator {
+  height: 6px;
+  width: 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 150ms, transform 150ms;
+}
+
+.carousel-indicator.active {
+  background-color: var(--champagne);
+  box-shadow: 0 0 8px rgba(201, 169, 110, 0.6);
+}
+
+.carousel-indicator.inactive {
+  background-color: rgba(201, 169, 110, 0.2);
+}
