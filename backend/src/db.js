@@ -8,18 +8,11 @@ const crypto = require('crypto');
 // -----------------------------------------------------
 // PostgreSQL Pool
 // -----------------------------------------------------
-const pool = new Pool(
-  process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
-    : {
-        host:     'aws-1-ap-southeast-2.pooler.supabase.com',
-        port:     6543,
-        database: 'postgres',
-        user:     'postgres.ccizqfpxoizccnbjbedb',
-        password: 'Arun3011***',
-        ssl:      { rejectUnauthorized: false }
-      }
-);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL ||
+    'postgresql://postgres.ccizqfpxoizccnbjbedb:Arun3011***@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres',
+  ssl: { rejectUnauthorized: false }
+});
 
 // Helper to convert SQLite '?' placeholders to PostgreSQL '$n'
 function formatSql(sql) {
