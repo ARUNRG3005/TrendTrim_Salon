@@ -8,14 +8,10 @@
       }
     }
   ],
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/index.html"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
+}
