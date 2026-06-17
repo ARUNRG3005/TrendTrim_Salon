@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useBooking } from '../context/BookingContext';
 import { useAuth } from '../context/AuthContext';
@@ -194,7 +195,7 @@ export default function Booking() {
   useEffect(() => {
     const fetchServicesAndStylists = async () => {
       try {
-        const resServices = await fetch('http://localhost:5000/api/services');
+        const resServices = await fetch(`${API_BASE}/api/services`);
         if (resServices.ok) {
           const data = await resServices.json();
           if (data && data.length > 0) {
@@ -217,7 +218,7 @@ export default function Booking() {
           }
         }
 
-        const resStylists = await fetch('http://localhost:5000/api/stylists');
+        const resStylists = await fetch(`${API_BASE}/api/stylists`);
         if (resStylists.ok) {
           const data = await resStylists.json();
           if (data && data.length > 0) {

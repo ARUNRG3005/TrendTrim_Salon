@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import API_BASE from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navigation from '../components/Navigation';
@@ -138,7 +139,7 @@ export default function Membership() {
 
     setTimeout(async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/membership/upgrade', {
+        const response = await fetch(`${API_BASE}/api/membership/upgrade`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

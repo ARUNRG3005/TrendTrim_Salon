@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import API_BASE from '../api';
 
 const BookingContext = createContext();
 
@@ -24,7 +25,7 @@ export const BookingProvider = ({ children }) => {
   const fetchBookings = async () => {
     try {
       const email = user?.email || '';
-      const response = await fetch(`http://localhost:5000/api/bookings?email=${encodeURIComponent(email)}`);
+      const response = await fetch(`${API_BASE}/api/bookings?email=${encodeURIComponent(email)}`);
       if (response.ok) {
         const data = await response.json();
         setMyBookings(data);
@@ -91,7 +92,7 @@ export const BookingProvider = ({ children }) => {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/bookings', {
+      const response = await fetch(`${API_BASE}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newBooking, userEmail: user?.email }),
@@ -118,7 +119,7 @@ export const BookingProvider = ({ children }) => {
 
   const cancelBooking = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+      const response = await fetch(`${API_BASE}/api/bookings/${id}`, {
         method: 'DELETE'
       });
       if (response.ok) {

@@ -5,11 +5,12 @@ import { SidebarProvider, SidebarInset } from '../components/ui/sidebar';
 import { Hero195 } from '../components/ui/hero-195';
 import { BorderBeam } from '../components/ui/border-beam';
 import { TracingBeam } from '../components/ui/tracing-beam';
+import API_BASE from '../api';
 
 const getImageUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
 export default function Admin() {
@@ -136,37 +137,37 @@ export default function Admin() {
     try {
       const headers = getHeaders();
       
-      const response = await fetch('http://localhost:5000/api/admin/analytics', { headers });
+      const response = await fetch('${API_BASE}/api/admin/analytics', { headers });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
       }
 
-      const bookingsResponse = await fetch('http://localhost:5000/api/bookings', { headers });
+      const bookingsResponse = await fetch('${API_BASE}/api/bookings', { headers });
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
         setBookings(bookingsData);
       }
 
-      const servicesResponse = await fetch('http://localhost:5000/api/admin/services', { headers });
+      const servicesResponse = await fetch('${API_BASE}/api/admin/services', { headers });
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json();
         setServicesList(servicesData);
       }
 
-      const stylistsResponse = await fetch('http://localhost:5000/api/admin/stylists', { headers });
+      const stylistsResponse = await fetch('${API_BASE}/api/admin/stylists', { headers });
       if (stylistsResponse.ok) {
         const stylistsData = await stylistsResponse.json();
         setSpecialists(stylistsData);
       }
 
-      const usersResponse = await fetch('http://localhost:5000/api/admin/users', { headers });
+      const usersResponse = await fetch('${API_BASE}/api/admin/users', { headers });
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();
         setCustomers(usersData);
       }
 
-      const auditResponse = await fetch('http://localhost:5000/api/admin/audit-logs', { headers });
+      const auditResponse = await fetch('${API_BASE}/api/admin/audit-logs', { headers });
       if (auditResponse.ok) {
         const auditData = await auditResponse.json();
         setAuditLogs(auditData);
@@ -270,7 +271,7 @@ export default function Admin() {
 
       // Use XMLHttpRequest to get upload progress
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', 'http://localhost:5000/api/admin/upload', true);
+      xhr.open('POST', '${API_BASE}/api/admin/upload', true);
       
       const headers = getHeaders({ 'Content-Type': 'application/json' });
       Object.keys(headers).forEach(key => {
@@ -328,7 +329,7 @@ export default function Admin() {
   const handleCreateService = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/admin/services', {
+      const res = await fetch('${API_BASE}/api/admin/services', {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -356,7 +357,7 @@ export default function Admin() {
   const handleEditServiceSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/services/${editingService.id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/services/${editingService.id}`, {
         method: 'PUT',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -379,7 +380,7 @@ export default function Admin() {
   const handleDeleteService = async (serviceId) => {
     if (!confirm('Are you sure you want to delete this service? It will be soft-deleted.')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/services/${serviceId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/services/${serviceId}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -394,7 +395,7 @@ export default function Admin() {
 
   const toggleServiceFeatured = async (service) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/services/${service.id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/services/${service.id}`, {
         method: 'PUT',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ is_featured: service.is_featured ? 0 : 1 })
@@ -412,7 +413,7 @@ export default function Admin() {
   const handleCreateStylist = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/admin/stylists', {
+      const res = await fetch('${API_BASE}/api/admin/stylists', {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -448,7 +449,7 @@ export default function Admin() {
   const handleEditStylistSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/stylists/${editingSpecialist.id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/stylists/${editingSpecialist.id}`, {
         method: 'PUT',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -469,7 +470,7 @@ export default function Admin() {
   const handleDeleteStylist = async (id) => {
     if (!confirm('Are you sure you want to remove this stylist? They will be marked as terminated and deactivated.')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/stylists/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/stylists/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -487,7 +488,7 @@ export default function Admin() {
   const handleEditBookingSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${editingBooking.id}`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${editingBooking.id}`, {
         method: 'PUT',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -507,7 +508,7 @@ export default function Admin() {
 
   const quickChangeBookingStatus = async (bookingId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}`, {
         method: 'PUT',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ status: newStatus })
@@ -523,7 +524,7 @@ export default function Admin() {
   const handleCancelBooking = async (bookingId) => {
     if (!confirm('Are you sure you want to cancel this booking? it will be soft-deleted.')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${bookingId}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -541,7 +542,7 @@ export default function Admin() {
   const handleEditUserSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${editingUser.id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/users/${editingUser.id}`, {
         method: 'PUT',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(userForm)
@@ -560,7 +561,7 @@ export default function Admin() {
     e.preventDefault();
     if (!resetPasswordVal) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${passwordResetUser.id}/reset-password`, {
+      const res = await fetch(`${API_BASE}/api/admin/users/${passwordResetUser.id}/reset-password`, {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ password: resetPasswordVal })
@@ -578,7 +579,7 @@ export default function Admin() {
   const handleDeleteUser = async (id) => {
     if (!confirm('Are you sure you want to delete this user? All bookings and profiles will be soft deleted/deactivated.')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/users/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
