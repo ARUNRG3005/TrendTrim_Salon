@@ -1,12 +1,14 @@
 const express = require('express');
 const cors = require('cors');
-const { 
-  initDb, 
-  query, 
-  get, 
-  run, 
-  hashPassword, 
-  verifyPassword 
+const {
+  initDb,
+  query,
+  get,
+  run,
+  withTransaction,
+  formatSql,
+  hashPassword,
+  verifyPassword
 } = require('./db');
 
 const app = express();
@@ -112,10 +114,10 @@ app.get('/api/bookings', async (req, res) => {
   try {
     if (email) {
       const filtered = await query(`
-        SELECT 
+        SELECT
           b.id,
-          u.email AS userEmail,
-          group_concat(sv.name, ', ') AS service,
+          u.email AS "userEmail",
+          string_agg(sv.name, ', ') AS service,
           b.appointment_date AS date,
           b.appointment_time AS time,
           su.name AS therapist,
@@ -128,7 +130,7 @@ app.get('/api/bookings', async (req, res) => {
         LEFT JOIN booking_services bs ON b.id = bs.booking_id
         LEFT JOIN services sv ON bs.service_id = sv.id
         WHERE LOWER(u.email) = LOWER(?) AND b.deleted_at IS NULL
-        GROUP BY b.id
+        GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price
         ORDER BY b.appointment_date DESC, b.appointment_time DESC
       `, [email.trim()]);
       res.json(filtered);
@@ -140,10 +142,10 @@ app.get('/api/bookings', async (req, res) => {
       }
       
       const allBookings = await query(`
-        SELECT 
+        SELECT
           b.id,
-          u.email AS userEmail,
-          group_concat(sv.name, ', ') AS service,
+          u.email AS "userEmail",
+          string_agg(sv.name, ', ') AS service,
           b.appointment_date AS date,
           b.appointment_time AS time,
           su.name AS therapist,
@@ -156,7 +158,7 @@ app.get('/api/bookings', async (req, res) => {
         LEFT JOIN booking_services bs ON b.id = bs.booking_id
         LEFT JOIN services sv ON bs.service_id = sv.id
         WHERE b.deleted_at IS NULL
-        GROUP BY b.id
+        GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price
         ORDER BY b.appointment_date DESC, b.appointment_time DESC
       `);
       res.json(allBookings);
@@ -180,7 +182,7 @@ app.post('/api/bookings', async (req, res) => {
     // 2. Resolve Stylist ID
     let stylistId;
     if (therapist === 'Any Professional' || therapist === 'Best Available') {
-      const anyStylist = await get('SELECT id FROM stylists WHERE employment_status = "ACTIVE" LIMIT 1');
+      const anyStylist = await get("SELECT id FROM stylists WHERE employment_status = 'ACTIVE' LIMIT 1");
       stylistId = anyStylist ? anyStylist.id : 1; // Fallback
     } else {
       const stylistRow = await get(`
@@ -202,42 +204,37 @@ app.post('/api/bookings', async (req, res) => {
     const serviceDuration = serviceRow.duration_minutes;
 
     // 4. Perform insertions in a transaction
-    await run('BEGIN TRANSACTION');
-
-    // Insert Booking
-    await run(
-      `INSERT INTO bookings (id, user_id, stylist_id, appointment_date, appointment_time, status, payment_status, total_price) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, userId, stylistId, date, time, status || 'CONFIRMED', 'PAID', servicePrice]
-    );
-
-    // Insert booking services relation
-    await run(
-      `INSERT INTO booking_services (booking_id, service_id, price_charged, duration_minutes) 
-       VALUES (?, ?, ?, ?)`,
-      [id, serviceId, servicePrice, serviceDuration]
-    );
-
-    // Create payment entry
     const invoiceNum = `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
     const txnRef = `TXN-${id.replace('BK-', '')}-${Math.floor(10 + Math.random() * 90)}`;
-    await run(
-      `INSERT INTO payments (booking_id, amount, payment_method, payment_status, transaction_reference, invoice_number) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, servicePrice, 'CREDIT_CARD', 'COMPLETED', txnRef, invoiceNum]
-    );
 
-    // Create Audit Log
-    await run(
-      `INSERT INTO audit_logs (actor_id, action, target_table, target_id, new_state) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, 'CREATE_BOOKING', 'bookings', id, JSON.stringify({ id, service, date, time, price: servicePrice })]
-    );
+    await withTransaction(async (client) => {
+      // Insert Booking
+      await client.query(formatSql(
+        `INSERT INTO bookings (id, user_id, stylist_id, appointment_date, appointment_time, status, payment_status, total_price)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ), [id, userId, stylistId, date, time, status || 'CONFIRMED', 'PAID', servicePrice]);
 
-    await run('COMMIT');
+      // Insert booking services relation
+      await client.query(formatSql(
+        `INSERT INTO booking_services (booking_id, service_id, price_charged, duration_minutes)
+         VALUES (?, ?, ?, ?)`
+      ), [id, serviceId, servicePrice, serviceDuration]);
+
+      // Create payment entry
+      await client.query(formatSql(
+        `INSERT INTO payments (booking_id, amount, payment_method, payment_status, transaction_reference, invoice_number)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ), [id, servicePrice, 'CREDIT_CARD', 'COMPLETED', txnRef, invoiceNum]);
+
+      // Create Audit Log
+      await client.query(formatSql(
+        `INSERT INTO audit_logs (actor_id, action, target_table, target_id, new_state)
+         VALUES (?, ?, ?, ?, ?)`
+      ), [userId, 'CREATE_BOOKING', 'bookings', id, JSON.stringify({ id, service, date, time, price: servicePrice })]);
+    });
+
     res.status(201).json({ id, userEmail, service, date, time, therapist, status: status || 'CONFIRMED', price: servicePrice });
   } catch (err) {
-    await run('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Database error creating booking' });
   }
@@ -252,11 +249,11 @@ app.delete('/api/bookings/:id', async (req, res) => {
     }
 
     // Soft Delete: update deleted_at
-    await run('UPDATE bookings SET deleted_at = CURRENT_TIMESTAMP, status = "CANCELLED" WHERE id = ?', [id]);
-    
+    await run("UPDATE bookings SET deleted_at = CURRENT_TIMESTAMP, status = 'CANCELLED' WHERE id = ?", [id]);
+
     // Update Payment status to REFUNDED
-    await run('UPDATE bookings SET payment_status = "REFUNDED" WHERE id = ?', [id]);
-    await run('UPDATE payments SET payment_status = "REFUNDED" WHERE booking_id = ?', [id]);
+    await run("UPDATE bookings SET payment_status = 'REFUNDED' WHERE id = ?", [id]);
+    await run("UPDATE payments SET payment_status = 'REFUNDED' WHERE booking_id = ?", [id]);
 
     // Log Audit
     await run(
@@ -301,11 +298,11 @@ app.put('/api/bookings/:id', adminAuth, async (req, res) => {
       if (dbStatus === 'CANCELLED') {
         updates.push('payment_status = ?');
         params.push('REFUNDED');
-        await run('UPDATE payments SET payment_status = "REFUNDED" WHERE booking_id = ?', [id]);
+        await run("UPDATE payments SET payment_status = 'REFUNDED' WHERE booking_id = ?", [id]);
       } else if (dbStatus === 'COMPLETED') {
         updates.push('payment_status = ?');
         params.push('PAID');
-        await run('UPDATE payments SET payment_status = "COMPLETED" WHERE booking_id = ?', [id]);
+        await run("UPDATE payments SET payment_status = 'COMPLETED' WHERE booking_id = ?", [id]);
       }
     }
 
@@ -369,10 +366,10 @@ app.put('/api/bookings/:id', adminAuth, async (req, res) => {
     }
 
     const updatedBooking = await get(`
-      SELECT 
+      SELECT
         b.id,
-        u.email AS userEmail,
-        group_concat(sv.name, ', ') AS service,
+        u.email AS "userEmail",
+        string_agg(sv.name, ', ') AS service,
         b.appointment_date AS date,
         b.appointment_time AS time,
         su.name AS therapist,
@@ -387,7 +384,7 @@ app.put('/api/bookings/:id', adminAuth, async (req, res) => {
       LEFT JOIN booking_services bs ON b.id = bs.booking_id
       LEFT JOIN services sv ON bs.service_id = sv.id
       WHERE b.id = ?
-      GROUP BY b.id
+      GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price, b.notes, b.payment_status
     `, [id]);
 
     res.json(updatedBooking);
@@ -572,7 +569,7 @@ app.delete('/api/admin/services/:id', adminAuth, async (req, res) => {
       return res.status(404).json({ message: 'Service not found' });
     }
 
-    await run('UPDATE services SET deleted_at = CURRENT_TIMESTAMP, status = "INACTIVE" WHERE id = ?', [id]);
+    await run("UPDATE services SET deleted_at = CURRENT_TIMESTAMP, status = 'INACTIVE' WHERE id = ?", [id]);
 
     // Log Audit
     await run('INSERT INTO audit_logs (action, target_table, target_id, previous_state) VALUES (?, ?, ?, ?)',
@@ -637,60 +634,53 @@ app.post('/api/admin/stylists', adminAuth, async (req, res) => {
       return res.status(400).json({ message: 'User account with this email already exists' });
     }
 
-    await run('BEGIN TRANSACTION');
-
+    let stylistId;
     const defaultPass = hashPassword('stylist123');
-    // Create User record
-    const userResult = await run(`
-      INSERT INTO users (email, password_hash, name, role, status, profile_photo_url, phone)
-      VALUES (?, ?, ?, 'STYLIST', 'ACTIVE', ?, ?)
-    `, [email.toLowerCase().trim(), defaultPass, name, profile_photo_url || null, phone || null]);
 
-    // Create Stylist record
-    const stylistResult = await run(`
-      INSERT INTO stylists (user_id, bio, specialization, experience_years, employment_status, average_rating)
-      VALUES (?, ?, ?, ?, ?, 5.0)
-    `, [userResult.id, bio || '', specialization || '', experience_years || 0, employment_status || 'ACTIVE']);
+    await withTransaction(async (client) => {
+      // Create User record
+      const userRes = await client.query(formatSql(`
+        INSERT INTO users (email, password_hash, name, role, status, profile_photo_url, phone)
+        VALUES (?, ?, ?, 'STYLIST', 'ACTIVE', ?, ?) RETURNING id
+      `), [email.toLowerCase().trim(), defaultPass, name, profile_photo_url || null, phone || null]);
+      const userId = userRes.rows[0].id;
 
-    const stylistId = stylistResult.id;
+      // Create Stylist record
+      const stylistRes = await client.query(formatSql(`
+        INSERT INTO stylists (user_id, bio, specialization, experience_years, employment_status, average_rating)
+        VALUES (?, ?, ?, ?, ?, 5.0) RETURNING id
+      `), [userId, bio || '', specialization || '', experience_years || 0, employment_status || 'ACTIVE']);
+      stylistId = stylistRes.rows[0].id;
 
-    // Map assigned services
-    if (Array.isArray(assigned_services)) {
-      for (const serviceName of assigned_services) {
-        const sv = await get('SELECT id FROM services WHERE name = ? AND deleted_at IS NULL', [serviceName]);
-        if (sv) {
-          await run('INSERT INTO stylist_services (stylist_id, service_id) VALUES (?, ?)', [stylistId, sv.id]);
+      // Map assigned services
+      if (Array.isArray(assigned_services)) {
+        for (const serviceName of assigned_services) {
+          const sv = await get('SELECT id FROM services WHERE name = ? AND deleted_at IS NULL', [serviceName]);
+          if (sv) {
+            await client.query(formatSql('INSERT INTO stylist_services (stylist_id, service_id) VALUES (?, ?)'), [stylistId, sv.id]);
+          }
         }
       }
-    }
 
-    // Set Availability schedule
-    if (Array.isArray(availability)) {
-      for (const av of availability) {
-        await run(`
+      // Set Availability schedule
+      const avList = Array.isArray(availability)
+        ? availability
+        : [1,2,3,4,5].map(d => ({ day_of_week: d, start_time: '09:00', end_time: '18:00' }));
+      for (const av of avList) {
+        await client.query(formatSql(`
           INSERT INTO stylist_availability (stylist_id, day_of_week, start_time, end_time)
           VALUES (?, ?, ?, ?)
-        `, [stylistId, av.day_of_week, av.start_time || '09:00', av.end_time || '18:00']);
+        `), [stylistId, av.day_of_week, av.start_time || '09:00', av.end_time || '18:00']);
       }
-    } else {
-      // Default: Monday to Friday (1-5)
-      for (let day = 1; day <= 5; day++) {
-        await run(`
-          INSERT INTO stylist_availability (stylist_id, day_of_week, start_time, end_time)
-          VALUES (?, ?, ?, ?)
-        `, [stylistId, day, '09:00', '18:00']);
-      }
-    }
 
-    // Log Audit
-    await run('INSERT INTO audit_logs (action, target_table, target_id, new_state) VALUES (?, ?, ?, ?)',
-      ['CREATE_STYLIST', 'stylists', stylistId.toString(), JSON.stringify(req.body)]
-    );
+      // Log Audit
+      await client.query(formatSql(
+        'INSERT INTO audit_logs (action, target_table, target_id, new_state) VALUES (?, ?, ?, ?)'
+      ), ['CREATE_STYLIST', 'stylists', stylistId.toString(), JSON.stringify(req.body)]);
+    });
 
-    await run('COMMIT');
     res.status(201).json({ id: stylistId, name, email, phone, profile_photo_url, bio, specialization, experience_years, employment_status });
   } catch (err) {
-    await run('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Database error creating stylist' });
   }
@@ -705,64 +695,62 @@ app.put('/api/admin/stylists/:id', adminAuth, async (req, res) => {
       return res.status(404).json({ message: 'Stylist not found' });
     }
 
-    await run('BEGIN TRANSACTION');
+    await withTransaction(async (client) => {
+      // Update users profile details
+      await client.query(formatSql(`
+        UPDATE users
+        SET name = COALESCE(?, name),
+            phone = COALESCE(?, phone),
+            profile_photo_url = COALESCE(?, profile_photo_url),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `), [name, phone, profile_photo_url, oldStylist.user_id]);
 
-    // Update users profile details
-    await run(`
-      UPDATE users
-      SET name = COALESCE(?, name),
-          phone = COALESCE(?, phone),
-          profile_photo_url = COALESCE(?, profile_photo_url),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [name, phone, profile_photo_url, oldStylist.user_id]);
+      // Update stylist details
+      await client.query(formatSql(`
+        UPDATE stylists
+        SET bio = COALESCE(?, bio),
+            specialization = COALESCE(?, specialization),
+            experience_years = COALESCE(?, experience_years),
+            employment_status = COALESCE(?, employment_status),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `), [bio, specialization, experience_years, employment_status, id]);
 
-    // Update stylist details
-    await run(`
-      UPDATE stylists
-      SET bio = COALESCE(?, bio),
-          specialization = COALESCE(?, specialization),
-          experience_years = COALESCE(?, experience_years),
-          employment_status = COALESCE(?, employment_status),
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [bio, specialization, experience_years, employment_status, id]);
-
-    // Update assigned services if provided
-    if (assigned_services !== undefined) {
-      await run('DELETE FROM stylist_services WHERE stylist_id = ?', [id]);
-      if (Array.isArray(assigned_services)) {
-        for (const serviceName of assigned_services) {
-          const sv = await get('SELECT id FROM services WHERE name = ? AND deleted_at IS NULL', [serviceName]);
-          if (sv) {
-            await run('INSERT INTO stylist_services (stylist_id, service_id) VALUES (?, ?)', [id, sv.id]);
+      // Update assigned services if provided
+      if (assigned_services !== undefined) {
+        await client.query(formatSql('DELETE FROM stylist_services WHERE stylist_id = ?'), [id]);
+        if (Array.isArray(assigned_services)) {
+          for (const serviceName of assigned_services) {
+            const sv = await get('SELECT id FROM services WHERE name = ? AND deleted_at IS NULL', [serviceName]);
+            if (sv) {
+              await client.query(formatSql('INSERT INTO stylist_services (stylist_id, service_id) VALUES (?, ?)'), [id, sv.id]);
+            }
           }
         }
       }
-    }
 
-    // Update availability schedules if provided
-    if (availability !== undefined) {
-      await run('DELETE FROM stylist_availability WHERE stylist_id = ?', [id]);
-      if (Array.isArray(availability)) {
-        for (const av of availability) {
-          await run(`
-            INSERT INTO stylist_availability (stylist_id, day_of_week, start_time, end_time)
-            VALUES (?, ?, ?, ?)
-          `, [id, av.day_of_week, av.start_time || '09:00', av.end_time || '18:00']);
+      // Update availability schedules if provided
+      if (availability !== undefined) {
+        await client.query(formatSql('DELETE FROM stylist_availability WHERE stylist_id = ?'), [id]);
+        if (Array.isArray(availability)) {
+          for (const av of availability) {
+            await client.query(formatSql(`
+              INSERT INTO stylist_availability (stylist_id, day_of_week, start_time, end_time)
+              VALUES (?, ?, ?, ?)
+            `), [id, av.day_of_week, av.start_time || '09:00', av.end_time || '18:00']);
+          }
         }
       }
-    }
 
-    // Log Audit
-    await run('INSERT INTO audit_logs (action, target_table, target_id, previous_state, new_state) VALUES (?, ?, ?, ?, ?)',
-      ['UPDATE_STYLIST', 'stylists', id.toString(), JSON.stringify(oldStylist), JSON.stringify(req.body)]
-    );
+      // Log Audit
+      await client.query(formatSql(
+        'INSERT INTO audit_logs (action, target_table, target_id, previous_state, new_state) VALUES (?, ?, ?, ?, ?)'
+      ), ['UPDATE_STYLIST', 'stylists', id.toString(), JSON.stringify(oldStylist), JSON.stringify(req.body)]);
+    });
 
-    await run('COMMIT');
     res.json({ id, name, phone, profile_photo_url, bio, specialization, experience_years, employment_status });
   } catch (err) {
-    await run('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Database error updating stylist' });
   }
@@ -776,21 +764,20 @@ app.delete('/api/admin/stylists/:id', adminAuth, async (req, res) => {
       return res.status(404).json({ message: 'Stylist not found' });
     }
 
-    await run('BEGIN TRANSACTION');
-    // Soft delete stylist
-    await run('UPDATE stylists SET deleted_at = CURRENT_TIMESTAMP, employment_status = "TERMINATED" WHERE id = ?', [id]);
-    // Deactivate stylist user account
-    await run('UPDATE users SET status = "INACTIVE" WHERE id = ?', [oldStylist.user_id]);
+    await withTransaction(async (client) => {
+      // Soft delete stylist
+      await client.query(formatSql("UPDATE stylists SET deleted_at = CURRENT_TIMESTAMP, employment_status = 'TERMINATED' WHERE id = ?"), [id]);
+      // Deactivate stylist user account
+      await client.query(formatSql("UPDATE users SET status = 'INACTIVE' WHERE id = ?"), [oldStylist.user_id]);
 
-    // Log Audit
-    await run('INSERT INTO audit_logs (action, target_table, target_id, previous_state) VALUES (?, ?, ?, ?)',
-      ['DELETE_STYLIST', 'stylists', id.toString(), JSON.stringify(oldStylist)]
-    );
+      // Log Audit
+      await client.query(formatSql(
+        'INSERT INTO audit_logs (action, target_table, target_id, previous_state) VALUES (?, ?, ?, ?)'
+      ), ['DELETE_STYLIST', 'stylists', id.toString(), JSON.stringify(oldStylist)]);
+    });
 
-    await run('COMMIT');
     res.json({ success: true });
   } catch (err) {
-    await run('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Database error deleting stylist' });
   }
@@ -869,22 +856,21 @@ app.delete('/api/admin/users/:id', adminAuth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    await run('BEGIN TRANSACTION');
-    await run('UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = "INACTIVE" WHERE id = ?', [id]);
-    
-    if (oldUser.role === 'STYLIST') {
-      await run('UPDATE stylists SET deleted_at = CURRENT_TIMESTAMP, employment_status = "TERMINATED" WHERE user_id = ?', [id]);
-    }
+    await withTransaction(async (client) => {
+      await client.query(formatSql("UPDATE users SET deleted_at = CURRENT_TIMESTAMP, status = 'INACTIVE' WHERE id = ?"), [id]);
 
-    // Log Audit
-    await run('INSERT INTO audit_logs (action, target_table, target_id, previous_state) VALUES (?, ?, ?, ?)',
-      ['DELETE_USER', 'users', id.toString(), JSON.stringify(oldUser)]
-    );
+      if (oldUser.role === 'STYLIST') {
+        await client.query(formatSql("UPDATE stylists SET deleted_at = CURRENT_TIMESTAMP, employment_status = 'TERMINATED' WHERE user_id = ?"), [id]);
+      }
 
-    await run('COMMIT');
+      // Log Audit
+      await client.query(formatSql(
+        'INSERT INTO audit_logs (action, target_table, target_id, previous_state) VALUES (?, ?, ?, ?)'
+      ), ['DELETE_USER', 'users', id.toString(), JSON.stringify(oldUser)]);
+    });
+
     res.json({ success: true });
   } catch (err) {
-    await run('ROLLBACK');
     console.error(err);
     res.status(500).json({ message: 'Database error deleting user' });
   }
@@ -983,7 +969,7 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
     
     const bookingsCount = await get('SELECT COUNT(*) as count FROM bookings WHERE deleted_at IS NULL');
     const todayBookingsCount = await get('SELECT COUNT(*) as count FROM bookings WHERE appointment_date = ? AND deleted_at IS NULL', [today]);
-    const revenueResult = await get('SELECT SUM(amount) as total FROM payments WHERE payment_status = "COMPLETED"');
+    const revenueResult = await get("SELECT SUM(amount) as total FROM payments WHERE payment_status = 'COMPLETED'");
     
     // Calculate sales distribution dynamically using category relational counts
     const hairCount = await get(`
@@ -1054,10 +1040,10 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
     
     // Fetch recent bookings using relational mapping
     const recentBookings = await query(`
-      SELECT 
+      SELECT
         b.id,
-        u.email AS userEmail,
-        group_concat(sv.name, ', ') AS service,
+        u.email AS "userEmail",
+        string_agg(sv.name, ', ') AS service,
         b.appointment_date AS date,
         b.appointment_time AS time,
         su.name AS therapist,
@@ -1070,8 +1056,8 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
       LEFT JOIN booking_services bs ON b.id = bs.booking_id
       LEFT JOIN services sv ON bs.service_id = sv.id
       WHERE b.deleted_at IS NULL
-      GROUP BY b.id
-      ORDER BY b.appointment_date DESC, b.appointment_time DESC 
+      GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price
+      ORDER BY b.appointment_date DESC, b.appointment_time DESC
       LIMIT 5
     `);
     
@@ -1171,9 +1157,10 @@ app.post('/api/membership/upgrade', async (req, res) => {
 // Initialize DB and start server
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`LuxeBook Server is running on port ${PORT}`);
+    console.log(`✅ LuxeBook Server is running on port ${PORT}`);
   });
 }).catch(err => {
-  console.error('Failed to start LuxeBook server due to database init error:', err);
+  console.error('❌ Failed to start server – DB init error:', err.message);
+  process.exit(1);
 });
 

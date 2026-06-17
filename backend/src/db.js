@@ -1,53 +1,102 @@
 /* backend/src/db.js
-   PostgreSQL implementation – supersedes SQLite.
+   PostgreSQL implementation for Supabase Transaction Pooler (Render-compatible).
+   - No SQLite references
+   - No hardcoded fallback URLs
+   - Reads DATABASE_URL from environment only
+   - SSL always enabled (rejectUnauthorized: false) for Supabase pooler
 */
 
 const { Pool } = require('pg');
 const crypto = require('crypto');
 
 // -----------------------------------------------------
-// PostgreSQL Pool
+// Startup Validation
+// -----------------------------------------------------
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is missing. Set it in Render dashboard.');
+}
+
+// Log host for debugging (password is never exposed)
+try {
+  console.log('🔌 Connecting to DB host:', new URL(process.env.DATABASE_URL).hostname);
+} catch {
+  console.log('🔌 DATABASE_URL is set (unable to parse host).');
+}
+
+// -----------------------------------------------------
+// PostgreSQL Pool  (Supabase Transaction Pooler)
+// host:  aws-1-ap-southeast-2.pooler.supabase.com
+// port:  6543
+// ssl:   required
 // -----------------------------------------------------
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ||
-    'postgresql://postgres.ccizqfpxoizccnbjbedb:Arun3011***@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres',
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Helper to convert SQLite '?' placeholders to PostgreSQL '$n'
+// Crash early if the pool itself cannot connect
+pool.on('error', (err) => {
+  console.error('❌ Unexpected PostgreSQL pool error:', err.message);
+});
+
+// -----------------------------------------------------
+// SQL placeholder helper  (? → $1, $2, …)
+// -----------------------------------------------------
 function formatSql(sql) {
   let i = 0;
   return sql.replace(/\?/g, () => `$${++i}`);
 }
 
 // -----------------------------------------------------
-// Compatibility wrappers (maintain same API as previous SQLite code)
+// Compatibility wrappers  (same API surface as old SQLite helpers)
 // -----------------------------------------------------
 async function query(text, params = []) {
-  const formatted = formatSql(text);
-  const res = await pool.query(formatted, params);
+  const res = await pool.query(formatSql(text), params);
   return res.rows;
 }
 
 async function get(text, params = []) {
-  const formatted = formatSql(text);
-  const res = await pool.query(formatted, params);
+  const res = await pool.query(formatSql(text), params);
   return res.rows[0];
 }
 
 /**
- * `run` mimics sqlite3.run – returns an object with `id` (last insert id)
- * and `changes` (rowCount). For INSERTs `id` is the generated primary key.
+ * run() – mimics sqlite3.run.
+ * Returns { id, changes } where id is the RETURNING id (if present)
+ * and changes is the rowCount.
  */
 async function run(text, params = []) {
-  const formatted = formatSql(text);
-  const res = await pool.query(formatted, params);
+  const res = await pool.query(formatSql(text), params);
   const id = res.rows[0] ? res.rows[0].id : null;
   return { id, changes: res.rowCount };
 }
 
+/**
+ * withTransaction(fn) – runs fn(client) inside a PostgreSQL transaction.
+ * Automatically commits on success and rolls back on error.
+ * Use this instead of raw BEGIN / COMMIT / ROLLBACK strings.
+ *
+ * Usage:
+ *   await withTransaction(async (client) => {
+ *     await client.query(formatSql('INSERT …'), []);
+ *   });
+ */
+async function withTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await fn(client);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 // -----------------------------------------------------
-// Password hashing utilities (unchanged)
+// Password hashing utilities
 // -----------------------------------------------------
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -154,8 +203,7 @@ const initDb = async () => {
         status TEXT DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        deleted_at TIMESTAMP NULL,
-        FOREIGN KEY (category_id) REFERENCES service_categories(id)
+        deleted_at TIMESTAMP NULL
       )
     `);
 
@@ -170,9 +218,9 @@ const initDb = async () => {
       )
     `);
 
-    console.log('✅ PostgreSQL schema initialized');
+    console.log('✅ PostgreSQL schema initialized successfully');
   } catch (err) {
-    console.error('❌ Error initializing DB schema:', err);
+    console.error('❌ Error initializing DB schema:', err.message);
     throw err;
   }
 };
@@ -182,6 +230,8 @@ module.exports = {
   query,
   get,
   run,
+  withTransaction,
+  formatSql,
   hashPassword,
   verifyPassword,
   initDb
