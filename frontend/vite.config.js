@@ -11,9 +11,9 @@ const __dirname = path.dirname(__filename)
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [react()],
-  assetsInclude: ['**/*.glb'],
+  assetsInclude: ['**/*.glb', '**/*.mp4'],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
