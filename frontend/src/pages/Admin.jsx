@@ -143,10 +143,13 @@ export default function Admin() {
         setStats(data);
       }
 
-      const bookingsResponse = await fetch(`${API_BASE}/api/bookings`, { headers });
+      // Fetch ALL bookings via dedicated admin endpoint
+      const bookingsResponse = await fetch(`${API_BASE}/api/admin/bookings`, { headers });
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
-        setBookings(bookingsData);
+        setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+      } else {
+        console.warn('[Admin] /api/admin/bookings returned', bookingsResponse.status);
       }
 
       const servicesResponse = await fetch(`${API_BASE}/api/admin/services`, { headers });
@@ -630,16 +633,25 @@ export default function Admin() {
     setCurrentDate(nextDate);
   };
 
-  // Filter Bookings list
+  // Filter Bookings list — fully null-safe
   const filteredBookings = bookings.filter(b => {
-    const matchStatus = statusFilter === 'ALL' || b.status.toUpperCase() === statusFilter.toUpperCase() || (statusFilter.toUpperCase() === 'APPROVED' && b.status.toUpperCase() === 'CONFIRMED');
-    const bookingDateFormatted = b.date;
-    const matchDate = !selectedDate || bookingDateFormatted === selectedDate;
+    if (!b || !b.id) return false;
+    const status  = (b.status || '').toUpperCase();
+    const service  = (b.service  || '').toLowerCase();
+    const therapist = (b.therapist || '').toLowerCase();
+    const userEmail = (b.userEmail || '').toLowerCase();
+    const id       = String(b.id).toLowerCase();
+    const date     = b.date || '';
+
+    const matchStatus = statusFilter === 'ALL'
+      || status === statusFilter.toUpperCase()
+      || (statusFilter.toUpperCase() === 'APPROVED' && status === 'CONFIRMED');
+    const matchDate  = !selectedDate || date === selectedDate;
     const matchQuery = !searchQuery ||
-      b.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.therapist.toLowerCase().includes(searchQuery.toLowerCase());
+      id.includes(searchQuery.toLowerCase()) ||
+      userEmail.includes(searchQuery.toLowerCase()) ||
+      service.includes(searchQuery.toLowerCase()) ||
+      therapist.includes(searchQuery.toLowerCase());
     return matchStatus && matchDate && matchQuery;
   });
 
@@ -998,9 +1010,10 @@ export default function Admin() {
                                 <tr className="border-b border-[var(--border)] font-label-caps text-[10px] text-zinc-400">
                                   <th className="pb-sm font-bold">ID</th>
                                   <th className="pb-sm font-bold">CLIENT</th>
-                                  <th className="pb-sm font-bold">SERVICES</th>
+                                  <th className="pb-sm font-bold">SERVICE</th>
                                   <th className="pb-sm font-bold">SPECIALIST</th>
                                   <th className="pb-sm font-bold">SCHEDULE</th>
+                                  <th className="pb-sm font-bold">PRICE</th>
                                   <th className="pb-sm font-bold">STATUS</th>
                                   <th className="pb-sm font-bold text-right">ACTIONS</th>
                                 </tr>
@@ -1008,11 +1021,23 @@ export default function Admin() {
                               <tbody>
                                 {filteredBookings.map((b) => (
                                   <tr key={b.id} className="border-b border-zinc-100 dark:border-zinc-900 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors">
-                                    <td className="py-md font-bold text-[var(--primary)]">{b.id}</td>
-                                    <td className="py-md text-zinc-700 dark:text-zinc-300">{b.userEmail}</td>
-                                    <td className="py-md font-semibold text-zinc-850 dark:text-zinc-200">{b.service}</td>
-                                    <td className="py-md text-zinc-500 dark:text-zinc-400">{b.therapist}</td>
-                                    <td className="py-md text-zinc-650 dark:text-zinc-400">{b.date} @ {b.time}</td>
+                                    <td className="py-md font-bold text-[var(--primary)] pr-2">{b.id}</td>
+                                    <td className="py-md pr-2">
+                                      <div className="font-semibold text-zinc-800 dark:text-zinc-200">{b.userName || '—'}</div>
+                                      <div className="text-zinc-500 dark:text-zinc-400 text-[10px]">{b.userEmail || '—'}</div>
+                                    </td>
+                                    <td className="py-md font-semibold text-zinc-850 dark:text-zinc-200 pr-2">{b.service || '—'}</td>
+                                    <td className="py-md text-zinc-500 dark:text-zinc-400 pr-2">{b.therapist || '—'}</td>
+                                    <td className="py-md text-zinc-650 dark:text-zinc-400 pr-2">
+                                      <div>{b.date || '—'}</div>
+                                      <div className="text-[10px] text-zinc-400">{b.time || ''}</div>
+                                    </td>
+                                    <td className="py-md pr-2">
+                                      <div className="font-semibold text-[var(--primary)]">{'$' + (b.price || 0)}</div>
+                                      <div className={`text-[10px] ${b.paymentStatus === 'COMPLETED' || b.paymentStatus === 'PAID' ? 'text-green-500' : 'text-amber-500'}`}>
+                                        {b.paymentStatus || 'PENDING'}
+                                      </div>
+                                    </td>
                                     <td className="py-md">
                                       <span className={`inline-block font-label-caps text-[9px] font-bold px-sm py-1 rounded-full border
                                                 ${b.status === 'CONFIRMED' || b.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900/40' : ''}

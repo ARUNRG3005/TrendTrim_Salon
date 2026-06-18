@@ -40,7 +40,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','x-user-role'],
+  allowedHeaders: ['Content-Type','Authorization','x-user-role','x-user-email'],
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -166,61 +166,118 @@ app.get('/api/bookings', async (req, res) => {
   const { email } = req.query;
   try {
     if (email) {
+      // Customer: fetch their own bookings
       const filtered = await query(`
         SELECT
           b.id,
           u.email AS "userEmail",
-          string_agg(sv.name, ', ') AS service,
+          u.name  AS "userName",
+          u.phone AS "userPhone",
+          COALESCE(string_agg(DISTINCT sv.name, ', '), 'N/A') AS service,
           b.appointment_date AS date,
           b.appointment_time AS time,
-          su.name AS therapist,
+          COALESCE(su.name, 'Any Professional') AS therapist,
           b.status,
-          b.total_price AS price
+          b.payment_status AS "paymentStatus",
+          b.total_price AS price,
+          b.notes,
+          b.created_at AS "createdAt"
         FROM bookings b
         JOIN users u ON b.user_id = u.id
-        JOIN stylists s ON b.stylist_id = s.id
-        JOIN users su ON s.user_id = su.id
+        LEFT JOIN stylists s ON b.stylist_id = s.id
+        LEFT JOIN users su ON s.user_id = su.id
         LEFT JOIN booking_services bs ON b.id = bs.booking_id
         LEFT JOIN services sv ON bs.service_id = sv.id
-        WHERE LOWER(u.email) = LOWER(?) AND b.deleted_at IS NULL
-        GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price
+        WHERE LOWER(u.email) = LOWER($1) AND b.deleted_at IS NULL
+        GROUP BY b.id, u.email, u.name, u.phone, su.name,
+                 b.appointment_date, b.appointment_time, b.status,
+                 b.payment_status, b.total_price, b.notes, b.created_at
         ORDER BY b.appointment_date DESC, b.appointment_time DESC
       `, [email.trim()]);
-      res.json(filtered);
-    } else {
-      // Admin only - requires admin check
-      const userRole = req.headers['x-user-role'];
-      if (userRole !== 'ADMIN') {
-        return res.status(403).json({ message: 'Access denied: Admin role required' });
-      }
-      
-      const allBookings = await query(`
-        SELECT
-          b.id,
-          u.email AS "userEmail",
-          string_agg(sv.name, ', ') AS service,
-          b.appointment_date AS date,
-          b.appointment_time AS time,
-          su.name AS therapist,
-          b.status,
-          b.total_price AS price
-        FROM bookings b
-        JOIN users u ON b.user_id = u.id
-        JOIN stylists s ON b.stylist_id = s.id
-        JOIN users su ON s.user_id = su.id
-        LEFT JOIN booking_services bs ON b.id = bs.booking_id
-        LEFT JOIN services sv ON bs.service_id = sv.id
-        WHERE b.deleted_at IS NULL
-        GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price
-        ORDER BY b.appointment_date DESC, b.appointment_time DESC
-      `);
-      res.json(allBookings);
+      return res.json(filtered);
     }
+
+    // Admin: fetch ALL bookings
+    const userRole = req.headers['x-user-role'];
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({ message: 'Access denied: Admin role required' });
+    }
+
+    const allBookings = await query(`
+      SELECT
+        b.id,
+        u.email AS "userEmail",
+        u.name  AS "userName",
+        u.phone AS "userPhone",
+        COALESCE(string_agg(DISTINCT sv.name, ', '), 'N/A') AS service,
+        b.appointment_date AS date,
+        b.appointment_time AS time,
+        COALESCE(su.name, 'Any Professional') AS therapist,
+        b.status,
+        b.payment_status AS "paymentStatus",
+        b.total_price AS price,
+        b.notes,
+        b.created_at AS "createdAt"
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      LEFT JOIN stylists s ON b.stylist_id = s.id
+      LEFT JOIN users su ON s.user_id = su.id
+      LEFT JOIN booking_services bs ON b.id = bs.booking_id
+      LEFT JOIN services sv ON bs.service_id = sv.id
+      WHERE b.deleted_at IS NULL
+      GROUP BY b.id, u.email, u.name, u.phone, su.name,
+               b.appointment_date, b.appointment_time, b.status,
+               b.payment_status, b.total_price, b.notes, b.created_at
+      ORDER BY b.created_at DESC
+    `);
+    return res.json(allBookings);
   } catch (err) {
-    console.error(err);
+    console.error('[GET /api/bookings]', err.message);
     res.status(500).json({ message: 'Database error fetching bookings' });
   }
 });
+
+// Alias: Admin-specific bookings endpoint
+app.get('/api/admin/bookings', async (req, res) => {
+  const userRole = req.headers['x-user-role'];
+  if (userRole !== 'ADMIN') {
+    return res.status(403).json({ message: 'Access denied: Admin role required' });
+  }
+  try {
+    const allBookings = await query(`
+      SELECT
+        b.id,
+        u.email AS "userEmail",
+        u.name  AS "userName",
+        u.phone AS "userPhone",
+        COALESCE(string_agg(DISTINCT sv.name, ', '), 'N/A') AS service,
+        b.appointment_date AS date,
+        b.appointment_time AS time,
+        COALESCE(su.name, 'Any Professional') AS therapist,
+        b.status,
+        b.payment_status AS "paymentStatus",
+        b.total_price AS price,
+        b.notes,
+        b.created_at AS "createdAt"
+      FROM bookings b
+      JOIN users u ON b.user_id = u.id
+      LEFT JOIN stylists s ON b.stylist_id = s.id
+      LEFT JOIN users su ON s.user_id = su.id
+      LEFT JOIN booking_services bs ON b.id = bs.booking_id
+      LEFT JOIN services sv ON bs.service_id = sv.id
+      WHERE b.deleted_at IS NULL
+      GROUP BY b.id, u.email, u.name, u.phone, su.name,
+               b.appointment_date, b.appointment_time, b.status,
+               b.payment_status, b.total_price, b.notes, b.created_at
+      ORDER BY b.created_at DESC
+    `);
+    return res.json(allBookings);
+  } catch (err) {
+    console.error('[GET /api/admin/bookings]', err.message);
+    res.status(500).json({ message: 'Database error fetching bookings' });
+  }
+});
+
 
 app.post('/api/bookings', async (req, res) => {
   const { id, userEmail, service, date, time, therapist, status, price } = req.body;
