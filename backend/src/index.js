@@ -1068,10 +1068,11 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
       JOIN service_categories sc ON s.category_id = sc.id
       JOIN bookings b ON bs.booking_id = b.id
       WHERE b.deleted_at IS NULL
-      GROUP BY s.id
+      GROUP BY s.id, s.name, sc.name, s.price
       ORDER BY count DESC
       LIMIT 3
     `);
+
 
     // Recent activities (from audit_logs)
     const recentActivities = await query(`

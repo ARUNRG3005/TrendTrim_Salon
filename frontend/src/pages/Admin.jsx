@@ -137,37 +137,37 @@ export default function Admin() {
     try {
       const headers = getHeaders();
       
-      const response = await fetch('${API_BASE}/api/admin/analytics', { headers });
+      const response = await fetch(`${API_BASE}/api/admin/analytics`, { headers });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
       }
 
-      const bookingsResponse = await fetch('${API_BASE}/api/bookings', { headers });
+      const bookingsResponse = await fetch(`${API_BASE}/api/bookings`, { headers });
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
         setBookings(bookingsData);
       }
 
-      const servicesResponse = await fetch('${API_BASE}/api/admin/services', { headers });
+      const servicesResponse = await fetch(`${API_BASE}/api/admin/services`, { headers });
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json();
         setServicesList(servicesData);
       }
 
-      const stylistsResponse = await fetch('${API_BASE}/api/admin/stylists', { headers });
+      const stylistsResponse = await fetch(`${API_BASE}/api/admin/stylists`, { headers });
       if (stylistsResponse.ok) {
         const stylistsData = await stylistsResponse.json();
         setSpecialists(stylistsData);
       }
 
-      const usersResponse = await fetch('${API_BASE}/api/admin/users', { headers });
+      const usersResponse = await fetch(`${API_BASE}/api/admin/users`, { headers });
       if (usersResponse.ok) {
         const usersData = await usersResponse.json();
         setCustomers(usersData);
       }
 
-      const auditResponse = await fetch('${API_BASE}/api/admin/audit-logs', { headers });
+      const auditResponse = await fetch(`${API_BASE}/api/admin/audit-logs`, { headers });
       if (auditResponse.ok) {
         const auditData = await auditResponse.json();
         setAuditLogs(auditData);
@@ -271,7 +271,7 @@ export default function Admin() {
 
       // Use XMLHttpRequest to get upload progress
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '${API_BASE}/api/admin/upload', true);
+      xhr.open('POST', `${API_BASE}/api/admin/upload`, true);
       
       const headers = getHeaders({ 'Content-Type': 'application/json' });
       Object.keys(headers).forEach(key => {
@@ -329,7 +329,7 @@ export default function Admin() {
   const handleCreateService = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('${API_BASE}/api/admin/services', {
+      const res = await fetch(`${API_BASE}/api/admin/services`, {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
@@ -413,7 +413,7 @@ export default function Admin() {
   const handleCreateStylist = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('${API_BASE}/api/admin/stylists', {
+      const res = await fetch(`${API_BASE}/api/admin/stylists`, {
         method: 'POST',
         headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
