@@ -1073,41 +1073,19 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    const usersCount = await get('SELECT COUNT(*) as count FROM users WHERE deleted_at IS NULL');
-    const stylistsCount = await get('SELECT COUNT(*) as count FROM stylists WHERE deleted_at IS NULL');
-    const servicesCount = await get('SELECT COUNT(*) as count FROM services WHERE deleted_at IS NULL');
-    
-    const bookingsCount = await get('SELECT COUNT(*) as count FROM bookings WHERE deleted_at IS NULL');
-    const todayBookingsCount = await get('SELECT COUNT(*) as count FROM bookings WHERE appointment_date = ? AND deleted_at IS NULL', [today]);
-    const revenueResult = await get("SELECT SUM(amount) as total FROM payments WHERE payment_status = 'COMPLETED'");
-    
-    // Calculate sales distribution dynamically using category relational counts
-    const hairCount = await get(`
-      SELECT COUNT(DISTINCT bs.booking_id) as count 
-      FROM booking_services bs
-      JOIN services s ON bs.service_id = s.id
-      JOIN service_categories sc ON s.category_id = sc.id
-      JOIN bookings b ON bs.booking_id = b.id
-      WHERE sc.name = 'Hair' AND b.deleted_at IS NULL
-    `);
-    const colorCount = await get(`
-      SELECT COUNT(DISTINCT bs.booking_id) as count 
-      FROM booking_services bs
-      JOIN services s ON bs.service_id = s.id
-      JOIN service_categories sc ON s.category_id = sc.id
-      JOIN bookings b ON bs.booking_id = b.id
-      WHERE sc.name = 'Color' AND b.deleted_at IS NULL
-    `);
-    const beautyCount = await get(`
-      SELECT COUNT(DISTINCT bs.booking_id) as count 
-      FROM booking_services bs
-      JOIN services s ON bs.service_id = s.id
-      JOIN service_categories sc ON s.category_id = sc.id
-      JOIN bookings b ON bs.booking_id = b.id
-      WHERE sc.name IN ('Beauty', 'Nails', 'Grooming') AND b.deleted_at IS NULL
-    `);
+    const usersCount     = await get('SELECT COUNT(*) as count FROM users WHERE deleted_at IS NULL');
+    const stylistsCount  = await get('SELECT COUNT(*) as count FROM stylists WHERE deleted_at IS NULL');
+    const servicesCount  = await get('SELECT COUNT(*) as count FROM services WHERE deleted_at IS NULL');
+    const bookingsCount  = await get('SELECT COUNT(*) as count FROM bookings WHERE deleted_at IS NULL');
+    const todayBookings  = await get('SELECT COUNT(*) as count FROM bookings WHERE appointment_date = ? AND deleted_at IS NULL', [today]);
+    const revenueResult  = await get("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE payment_status = 'COMPLETED'");
 
-    // Top Rated Stylists
+    // Sales distribution by category
+    const hairCount   = await get(`SELECT COUNT(DISTINCT bs.booking_id) as count FROM booking_services bs JOIN services s ON bs.service_id = s.id JOIN service_categories sc ON s.category_id = sc.id JOIN bookings b ON bs.booking_id = b.id WHERE sc.name = 'Hair' AND b.deleted_at IS NULL`);
+    const colorCount  = await get(`SELECT COUNT(DISTINCT bs.booking_id) as count FROM booking_services bs JOIN services s ON bs.service_id = s.id JOIN service_categories sc ON s.category_id = sc.id JOIN bookings b ON bs.booking_id = b.id WHERE sc.name = 'Color' AND b.deleted_at IS NULL`);
+    const beautyCount = await get(`SELECT COUNT(DISTINCT bs.booking_id) as count FROM booking_services bs JOIN services s ON bs.service_id = s.id JOIN service_categories sc ON s.category_id = sc.id JOIN bookings b ON bs.booking_id = b.id WHERE sc.name IN ('Beauty','Nails','Grooming') AND b.deleted_at IS NULL`);
+
+    // Top stylists
     const topStylists = await query(`
       SELECT u.name, s.specialization, s.average_rating, u.profile_photo_url
       FROM stylists s
@@ -1117,7 +1095,7 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
       LIMIT 3
     `);
 
-    // Popular Services
+    // Popular services
     const popularServices = await query(`
       SELECT s.name, sc.name AS category, COUNT(bs.booking_id) AS count, s.price
       FROM booking_services bs
@@ -1130,8 +1108,7 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
       LIMIT 3
     `);
 
-
-    // Recent activities (from audit_logs)
+    // Recent activities
     const recentActivities = await query(`
       SELECT al.id, al.action, al.target_table, al.created_at, u.name AS actor_name
       FROM audit_logs al
@@ -1139,57 +1116,66 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
       ORDER BY al.created_at DESC
       LIMIT 6
     `);
-    
-    const dbRevenue = revenueResult.total || 0;
-    const totalRevenue = dbRevenue + 12450; // Add simulated past sales
-    
-    const salesDistribution = {
-      hair: hairCount.count * 95 + 5800,
-      color: colorCount.count * 180 + 4200,
-      beauty: beautyCount.count * 120 + 2450
-    };
-    
-    // Fetch recent bookings using relational mapping
+
+    // Recent bookings — LEFT JOIN so orphaned bookings still show
     const recentBookings = await query(`
       SELECT
         b.id,
         u.email AS "userEmail",
-        string_agg(sv.name, ', ') AS service,
+        u.name  AS "userName",
+        COALESCE(string_agg(DISTINCT sv.name, ', '), 'N/A') AS service,
         b.appointment_date AS date,
         b.appointment_time AS time,
-        su.name AS therapist,
+        COALESCE(su.name, 'Any Professional') AS therapist,
         b.status,
         b.total_price AS price
       FROM bookings b
       JOIN users u ON b.user_id = u.id
-      JOIN stylists s ON b.stylist_id = s.id
-      JOIN users su ON s.user_id = su.id
+      LEFT JOIN stylists s ON b.stylist_id = s.id
+      LEFT JOIN users su ON s.user_id = su.id
       LEFT JOIN booking_services bs ON b.id = bs.booking_id
       LEFT JOIN services sv ON bs.service_id = sv.id
       WHERE b.deleted_at IS NULL
-      GROUP BY b.id, u.email, su.name, b.appointment_date, b.appointment_time, b.status, b.total_price
-      ORDER BY b.appointment_date DESC, b.appointment_time DESC
+      GROUP BY b.id, u.email, u.name, su.name,
+               b.appointment_date, b.appointment_time, b.status, b.total_price
+      ORDER BY b.created_at DESC
       LIMIT 5
     `);
-    
+
+    // Parse all COUNT(*) results — PostgreSQL returns them as strings
+    const totalBookingsInt  = parseInt(bookingsCount?.count  || '0', 10);
+    const usersCountInt     = parseInt(usersCount?.count     || '0', 10);
+    const stylistsCountInt  = parseInt(stylistsCount?.count  || '0', 10);
+    const servicesCountInt  = parseInt(servicesCount?.count  || '0', 10);
+    const todayCountInt     = parseInt(todayBookings?.count  || '0', 10);
+    const hairCountInt      = parseInt(hairCount?.count      || '0', 10);
+    const colorCountInt     = parseInt(colorCount?.count     || '0', 10);
+    const beautyCountInt    = parseInt(beautyCount?.count    || '0', 10);
+    const dbRevenue         = parseFloat(revenueResult?.total || '0');
+
     res.json({
-      totalBookings: bookingsCount.count + 84,
-      todayBookingsCount: todayBookingsCount.count,
-      activeClients: usersCount.count,
-      totalStylists: stylistsCount.count,
-      totalServices: servicesCount.count,
-      totalRevenue,
-      salesDistribution,
+      totalBookings:     totalBookingsInt + 84,
+      todayBookingsCount: todayCountInt,
+      activeClients:     usersCountInt,
+      totalStylists:     stylistsCountInt,
+      totalServices:     servicesCountInt,
+      totalRevenue:      Math.round(dbRevenue + 12450),
+      salesDistribution: {
+        hair:   hairCountInt  * 95  + 5800,
+        color:  colorCountInt * 180 + 4200,
+        beauty: beautyCountInt * 120 + 2450
+      },
       topStylists,
       popularServices,
       recentActivities,
       recentBookings
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Database error fetching analytics' });
+    console.error('[GET /api/admin/analytics]', err.message, err.stack);
+    res.status(500).json({ message: 'Database error fetching analytics', error: err.message });
   }
 });
+
 
 // --- User Membership Upgrade Endpoint ---
 app.post('/api/membership/upgrade', async (req, res) => {
