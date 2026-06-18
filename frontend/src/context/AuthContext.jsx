@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: cleanEmail, password }),
       });
       const data = await response.json();
@@ -49,37 +50,46 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: data.message };
       }
     } catch (err) {
-      // Offline fallback
+      // ── Offline / network-down fallback ──────────────────────────
       let authedUser;
+
+      // Admin accounts (both supported emails)
       if (cleanEmail === 'admin@gmail.com') {
         if (password === 'adminlb123') {
           authedUser = { email: cleanEmail, name: 'TrendTrim Admin', role: 'ADMIN', tier: 'DIAMOND TIER' };
         } else {
           return { success: false, error: 'Invalid credentials' };
         }
+      } else if (cleanEmail === 'admin@trendtrim.com') {
+        if (password === 'admin') {
+          authedUser = { email: cleanEmail, name: 'TrendTrim Admin', role: 'ADMIN', tier: 'DIAMOND TIER' };
+        } else {
+          return { success: false, error: 'Invalid credentials' };
+        }
+      } else if (cleanEmail === 'user@trendtrim.com') {
+        if (password === 'user') {
+          authedUser = { email: cleanEmail, name: 'Demo User', role: 'USER', tier: 'PLATINUM MEMBER' };
+        } else {
+          return { success: false, error: 'Invalid credentials' };
+        }
       } else {
-        // Look up in our mock local storage database
+        // Look up in locally stored registered users
         const registered = JSON.parse(localStorage.getItem('trendtrim_registered_users') || '[]');
         const found = registered.find(u => u.email.toLowerCase() === cleanEmail);
-        if (found) {
-          authedUser = { 
-            email: found.email, 
-            name: found.name || '', 
-            phone: found.phone || '', 
+        if (found && found.password === password) {
+          authedUser = {
+            email:  found.email,
+            name:   found.name   || '',
+            phone:  found.phone  || '',
             avatar: found.avatar || '',
-            role: found.role || 'USER', 
-            tier: found.tier || 'PLATINUM MEMBER' 
+            role:   found.role   || 'USER',
+            tier:   found.tier   || 'PLATINUM MEMBER'
           };
         } else {
-          // If user logged in offline without registering first, we do NOT auto-assign name.
-          // We return an empty name session to trigger profile completeness prompt.
-          authedUser = { email: cleanEmail, name: '', phone: '', avatar: '', role: 'USER', tier: 'PLATINUM MEMBER' };
-          
-          // Seed the mock database for future logins
-          registered.push({ email: cleanEmail, name: '', phone: '', avatar: '', role: 'USER', tier: 'PLATINUM MEMBER' });
-          localStorage.setItem('trendtrim_registered_users', JSON.stringify(registered));
+          return { success: false, error: 'Invalid credentials. Please check your email and password.' };
         }
       }
+
       setUser(authedUser);
       setGuest(false);
       localStorage.removeItem('trendtrim_guest');
@@ -100,6 +110,7 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ name, email: cleanEmail, password }),
       });
       const data = await response.json();

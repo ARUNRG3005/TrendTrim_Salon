@@ -14,9 +14,40 @@ const {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4173',
+  // Vercel deployments
+  /\.vercel\.app$/,
+  // Netlify deployments
+  /\.netlify\.app$/,
+];
+
+if (process.env.FRONTEND_URL) {
+  ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
+}
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Render health checks)
+    if (!origin) return callback(null, true);
+    const allowed = ALLOWED_ORIGINS.some(o =>
+      typeof o === 'string' ? o === origin : o.test(origin)
+    );
+    callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','x-user-role'],
+}));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// ─── Health check (Render uses this) ─────────────────────────────────────────
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
 // Admin Authorization Middleware
 const adminAuth = (req, res, next) => {
@@ -29,36 +60,49 @@ const adminAuth = (req, res, next) => {
   next();
 };
 
-// Auth routes
+// ─── Auth routes ──────────────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
   const cleanEmail = email.toLowerCase().trim();
-  
+  console.log(`[LOGIN] attempt: ${cleanEmail}`);
+
   try {
     const user = await get(`
-      SELECT u.*, mt.name AS tier 
+      SELECT u.*, mt.name AS tier
       FROM users u
       LEFT JOIN membership_tiers mt ON u.membership_tier_id = mt.id
       WHERE LOWER(u.email) = LOWER(?) AND u.deleted_at IS NULL
     `, [cleanEmail]);
 
-    if (user && verifyPassword(password, user.password_hash)) {
-      // Log User Activity
-      await run(
-        'INSERT INTO user_activity_logs (user_id, action, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?)',
-        [user.id, 'LOGIN', req.ip, req.headers['user-agent'], JSON.stringify({ email: cleanEmail })]
-      );
+    if (!user) {
+      console.log(`[LOGIN] user not found: ${cleanEmail}`);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const valid = verifyPassword(password, user.password_hash);
+    console.log(`[LOGIN] password valid: ${valid} for ${cleanEmail}`);
+
+    if (valid) {
+      try {
+        await run(
+          'INSERT INTO user_activity_logs (user_id, action, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?)',
+          [user.id, 'LOGIN', req.ip, req.headers['user-agent'], JSON.stringify({ email: cleanEmail })]
+        );
+      } catch (logErr) {
+        console.warn('[LOGIN] activity log failed (non-fatal):', logErr.message);
+      }
 
       const { password_hash: _, ...safeUser } = user;
-      res.json({ user: safeUser });
+      console.log(`[LOGIN] success: ${cleanEmail} role=${user.role}`);
+      return res.json({ user: safeUser });
     } else {
-      res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
   } catch (err) {
-    console.error(err);
+    console.error('[LOGIN] error:', err.message);
     res.status(500).json({ message: 'Database login error' });
   }
 });
@@ -69,19 +113,21 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(400).json({ message: 'All fields are required' });
   }
   const cleanEmail = email.toLowerCase().trim();
+  console.log(`[REGISTER] attempt: ${cleanEmail}`);
 
-  if (cleanEmail === 'admin@gmail.com') {
+  // Block reserved admin emails
+  if (cleanEmail === 'admin@gmail.com' || cleanEmail === 'admin@trendtrim.com') {
     return res.status(400).json({ message: 'Admin account is pre-registered' });
   }
 
   try {
-    const existing = await get('SELECT * FROM users WHERE email = ? AND deleted_at IS NULL', [cleanEmail]);
+    const existing = await get('SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND deleted_at IS NULL', [cleanEmail]);
     if (existing) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'An account with this email already exists' });
     }
 
     const tierRow = await get("SELECT id FROM membership_tiers WHERE name = 'PLATINUM MEMBER'");
-    const tierId = tierRow ? tierRow.id : null;
+    const tierId  = tierRow ? tierRow.id : null;
 
     const hashedPassword = hashPassword(password);
     const result = await run(
@@ -89,21 +135,28 @@ app.post('/api/auth/register', async (req, res) => {
       [cleanEmail, hashedPassword, name, 'USER', tierId]
     );
 
-    // Log User Activity
-    await run(
-      'INSERT INTO user_activity_logs (user_id, action, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?)',
-      [result.id, 'REGISTER', req.ip, req.headers['user-agent'], JSON.stringify({ email: cleanEmail, name })]
-    );
+    console.log(`[REGISTER] created user id=${result.id} email=${cleanEmail}`);
 
-    const newUser = { 
-      email: cleanEmail, 
-      name, 
-      role: 'USER', 
-      tier: 'PLATINUM MEMBER' 
+    // Log activity (non-fatal)
+    try {
+      await run(
+        'INSERT INTO user_activity_logs (user_id, action, ip_address, user_agent, details) VALUES (?, ?, ?, ?, ?)',
+        [result.id, 'REGISTER', req.ip, req.headers['user-agent'], JSON.stringify({ email: cleanEmail, name })]
+      );
+    } catch (logErr) {
+      console.warn('[REGISTER] activity log failed (non-fatal):', logErr.message);
+    }
+
+    const newUser = {
+      id:   result.id,
+      email: cleanEmail,
+      name,
+      role: 'USER',
+      tier: 'PLATINUM MEMBER'
     };
-    res.status(201).json({ user: newUser });
+    return res.status(201).json({ user: newUser });
   } catch (err) {
-    console.error(err);
+    console.error('[REGISTER] error:', err.message);
     res.status(500).json({ message: 'Database registration error' });
   }
 });
