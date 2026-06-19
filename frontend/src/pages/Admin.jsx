@@ -131,87 +131,100 @@ export default function Admin() {
     return apiHeaders;
   };
 
-  // Fetch Data from DB
+  // Fetch Data from DB — each endpoint is independently resilient
   const fetchData = async () => {
     setLoading(true);
+    const headers = getHeaders();
+
+    // 1. Analytics — try first, but don't block if it 500s
+    let analyticsData = null;
     try {
-      const headers = getHeaders();
-      
-      const response = await fetch(`${API_BASE}/api/admin/analytics`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
+      const r = await fetch(`${API_BASE}/api/admin/analytics`, { headers });
+      if (r.ok) analyticsData = await r.json();
+      else console.warn('[Admin] analytics returned', r.status);
+    } catch (e) { console.warn('[Admin] analytics fetch failed:', e.message); }
 
-      // Fetch ALL bookings via dedicated admin endpoint
-      const bookingsResponse = await fetch(`${API_BASE}/api/admin/bookings`, { headers });
-      if (bookingsResponse.ok) {
-        const bookingsData = await bookingsResponse.json();
-        setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+    // 2. Bookings — try dedicated admin endpoint first, fallback to /api/bookings
+    let allBookings = [];
+    try {
+      // Try /api/admin/bookings (new endpoint)
+      const r1 = await fetch(`${API_BASE}/api/admin/bookings`, { headers });
+      if (r1.ok) {
+        allBookings = await r1.json();
       } else {
-        console.warn('[Admin] /api/admin/bookings returned', bookingsResponse.status);
+        // Fallback: /api/bookings without email param (returns all for ADMIN role)
+        console.warn('[Admin] /api/admin/bookings returned', r1.status, '— falling back to /api/bookings');
+        const r2 = await fetch(`${API_BASE}/api/bookings`, { headers });
+        if (r2.ok) allBookings = await r2.json();
       }
-
-      const servicesResponse = await fetch(`${API_BASE}/api/admin/services`, { headers });
-      if (servicesResponse.ok) {
-        const servicesData = await servicesResponse.json();
-        setServicesList(servicesData);
-      }
-
-      const stylistsResponse = await fetch(`${API_BASE}/api/admin/stylists`, { headers });
-      if (stylistsResponse.ok) {
-        const stylistsData = await stylistsResponse.json();
-        setSpecialists(stylistsData);
-      }
-
-      const usersResponse = await fetch(`${API_BASE}/api/admin/users`, { headers });
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        setCustomers(usersData);
-      }
-
-      const auditResponse = await fetch(`${API_BASE}/api/admin/audit-logs`, { headers });
-      if (auditResponse.ok) {
-        const auditData = await auditResponse.json();
-        setAuditLogs(auditData);
-      }
-
-      setLoading(false);
+      if (Array.isArray(allBookings)) setBookings(allBookings);
     } catch (e) {
-      console.error('Error fetching admin data, falling back to local storage:', e);
-      
-      const registered = JSON.parse(localStorage.getItem('trendtrim_registered_users') || '[]');
-      if (registered.length > 0) {
-        setCustomers(registered.map((u, i) => ({
-          id: u.id || `U-${i + 1000}`,
-          name: u.name || 'Guest User',
-          email: u.email,
-          phone: u.phone,
-          profile_photo_url: u.avatar,
-          tier: u.tier || 'STANDARD',
-          status: 'ACTIVE',
-          role: u.role || 'USER',
-          bookings: 0
-        })));
-      }
-
-      let allBookings = [];
+      console.warn('[Admin] bookings fetch failed:', e.message);
+      // Last resort: read from localStorage
+      let stored = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith('trendtrim_bookings_')) {
-          try {
-            const userBookings = JSON.parse(localStorage.getItem(key) || '[]');
-            allBookings = [...allBookings, ...userBookings];
-          } catch(err) {}
+          try { stored = [...stored, ...JSON.parse(localStorage.getItem(key) || '[]')]; } catch(_) {}
         }
       }
-      if (allBookings.length > 0) {
-        setBookings(allBookings);
-      }
-
-      setLoading(false);
+      if (stored.length > 0) { allBookings = stored; setBookings(stored); }
     }
+
+    // 3. If analytics worked, use it; otherwise compute stats from live data
+    if (analyticsData && typeof analyticsData.totalBookings === 'number') {
+      setStats(analyticsData);
+    } else {
+      // Build stats from bookings + customers we already have
+      setStats(prev => ({
+        ...prev,
+        totalBookings: allBookings.length,
+        todayBookingsCount: allBookings.filter(b => b.date === new Date().toISOString().split('T')[0]).length,
+        recentBookings: allBookings.slice(0, 5),
+      }));
+    }
+
+    // 4. Services
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/services`, { headers });
+      if (r.ok) setServicesList(await r.json());
+    } catch (e) { console.warn('[Admin] services fetch failed'); }
+
+    // 5. Stylists
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/stylists`, { headers });
+      if (r.ok) setSpecialists(await r.json());
+    } catch (e) { console.warn('[Admin] stylists fetch failed'); }
+
+    // 6. Users
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/users`, { headers });
+      if (r.ok) {
+        const users = await r.json();
+        setCustomers(users);
+        // Update activeClients if analytics didn't load
+        if (!analyticsData) {
+          setStats(prev => ({ ...prev, activeClients: Array.isArray(users) ? users.length : 0 }));
+        }
+      }
+    } catch (e) { console.warn('[Admin] users fetch failed'); }
+
+    // 7. Audit Logs
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/audit-logs`, { headers });
+      if (r.ok) setAuditLogs(await r.json());
+    } catch (e) { console.warn('[Admin] audit-logs fetch failed'); }
+
+    setLoading(false);
   };
+
+  // Auto-refresh every 30 seconds so new bookings appear without page reload
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadNotifications = () => {
     const existingStr = localStorage.getItem('trendtrim_admin_notifications');
@@ -228,16 +241,16 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    fetchData();
+    // Notifications & storage event listeners
     loadNotifications();
-
     const handleStorage = () => loadNotifications();
     window.addEventListener('storage', handleStorage);
-    window.addEventListener('trendtrim_booking_created', handleStorage);
-
+    // Listen for new bookings created on the user side → refresh admin data
+    const handleNewBooking = () => fetchData();
+    window.addEventListener('trendtrim_booking_created', handleNewBooking);
     return () => {
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('trendtrim_booking_created', handleStorage);
+      window.removeEventListener('trendtrim_booking_created', handleNewBooking);
     };
   }, []);
 
