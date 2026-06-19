@@ -25,14 +25,10 @@ export function CalendarWithTimePresets({
     return d
   }, [])
 
-  // Create some mocked booked dates relative to today (e.g. +5, +6, +7 days)
+  // No locked mock dates by default
   const bookedDates = React.useMemo(() => {
-    return [
-      new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000),
-      new Date(today.getTime() + 6 * 24 * 60 * 60 * 1000),
-      new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000),
-    ]
-  }, [today])
+    return []
+  }, [])
 
   return (
     <Card className="gap-0 p-0 overflow-hidden border border-border bg-card text-card-foreground shadow-lg rounded-2xl">

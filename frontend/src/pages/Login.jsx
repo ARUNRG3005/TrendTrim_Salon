@@ -239,15 +239,6 @@ export default function Login() {
               onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-mute)'}
             >Browse as guest</button>
           </p>
-
-          {/* Demo hint */}
-          <div style={{ marginTop: '2.25rem', padding: '14px 18px', background: 'rgba(201,169,110,0.05)', border: '1px solid rgba(201,169,110,0.14)', borderRadius: '14px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: 'linear-gradient(to bottom, var(--champagne-dk), var(--champagne))' }} />
-            <p style={{ fontFamily: 'Tenor Sans, sans-serif', fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--champagne)', margin: '0 0 5px' }}>Demo Access</p>
-            <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.75rem', color: 'var(--color-text-dim)', margin: 0, lineHeight: 1.7 }}>
-              user@trendtrim.com / user &nbsp;·&nbsp; admin@trendtrim.com / admin
-            </p>
-          </div>
         </div>
       </div>
     </div>

@@ -11,6 +11,12 @@ import NumberFlow from '@number-flow/react';
 import SpotlightCard from '../components/ui/SpotlightCard';
 import { CalendarWithTimePresets } from '../components/ui/calendar-with-time-presets';
 
+const getImageUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 /* ─── Floating Label Field ───────────────────────────────────────────────── */
 function FloatField({ label, type = 'text', value, onChange, min, children, as = 'input' }) {
   const [focused, setFocused] = useState(false);
@@ -226,7 +232,7 @@ export default function Booking() {
               name: s.name,
               title: s.specialization || 'Stylist',
               rating: s.average_rating || 5.0,
-              img: s.profile_photo_url || null,
+              img: s.profile_photo_url ? getImageUrl(s.profile_photo_url) : null,
               icon: 'person'
             }));
             const anyProfessional = { name: 'Any Professional', title: 'Best Available', rating: 4.9, img: null, icon: 'groups' };

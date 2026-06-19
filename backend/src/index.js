@@ -46,6 +46,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+const path = require('path');
+const fs = require('fs');
+
+// Ensure upload directory exists and serve static files
+const uploadDir = path.resolve(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadDir));
+
 // ─── Health check (Render uses this) ─────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
@@ -1037,7 +1047,7 @@ app.post('/api/admin/upload', adminAuth, async (req, res) => {
     const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
     
-    const uploadDir = path.resolve(__dirname, '../../frontend/public/uploads');
+    const uploadDir = path.resolve(__dirname, '../uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -1164,16 +1174,16 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
     const dbRevenue         = parseFloat(revenueResult?.total || '0');
 
     res.json({
-      totalBookings:     totalBookingsInt + 84,
+      totalBookings:     totalBookingsInt,
       todayBookingsCount: todayCountInt,
       activeClients:     usersCountInt,
       totalStylists:     stylistsCountInt,
       totalServices:     servicesCountInt,
-      totalRevenue:      Math.round(dbRevenue + 12450),
+      totalRevenue:      Math.round(dbRevenue),
       salesDistribution: {
-        hair:   hairCountInt  * 95  + 5800,
-        color:  colorCountInt * 180 + 4200,
-        beauty: beautyCountInt * 120 + 2450
+        hair:   hairCountInt  * 95,
+        color:  colorCountInt * 180,
+        beauty: beautyCountInt * 120
       },
       topStylists,
       popularServices,
