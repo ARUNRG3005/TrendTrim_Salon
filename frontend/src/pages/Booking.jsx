@@ -13,7 +13,7 @@ import { CalendarWithTimePresets } from '../components/ui/calendar-with-time-pre
 
 const getImageUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
   return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 

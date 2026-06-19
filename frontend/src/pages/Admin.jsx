@@ -9,7 +9,7 @@ import API_BASE from '../api';
 
 const getImageUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
   return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 

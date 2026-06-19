@@ -1037,35 +1037,23 @@ app.post('/api/admin/users/:id/reset-password', adminAuth, async (req, res) => {
 
 app.post('/api/admin/upload', adminAuth, async (req, res) => {
   const { filename, base64Data } = req.body;
-  if (!filename || !base64Data) {
-    return res.status(400).json({ message: 'Filename and base64Data are required' });
+  if (!base64Data) {
+    return res.status(400).json({ message: 'base64Data is required' });
   }
   try {
-    const fs = require('fs');
-    const path = require('path');
+    // Log Audit (non-fatal)
+    try {
+      await run('INSERT INTO audit_logs (action, target_table, target_id, new_state) VALUES (?, ?, ?, ?)',
+        ['UPLOAD_IMAGE', 'files', '0', JSON.stringify({ filename: filename || 'image', size: base64Data.length, url: 'database_base64' })]
+      );
+    } catch(e) {}
 
-    const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(cleanBase64, 'base64');
-    
-    const uploadDir = path.resolve(__dirname, '../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    const destPath = path.join(uploadDir, filename);
-    fs.writeFileSync(destPath, buffer);
-
-    const publicUrl = `/uploads/${filename}`;
-    
-    // Log Audit
-    await run('INSERT INTO audit_logs (action, target_table, target_id, new_state) VALUES (?, ?, ?, ?)',
-      ['UPLOAD_IMAGE', 'files', '0', JSON.stringify({ filename, size: buffer.length, url: publicUrl })]
-    );
-
-    res.json({ url: publicUrl });
+    // Return the base64Data URL directly to be stored in the Supabase database (users / services table),
+    // ensuring permanent persistence across Render container restarts.
+    res.json({ url: base64Data });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Error saving uploaded file' });
+    res.status(500).json({ message: 'Error processing image' });
   }
 });
 

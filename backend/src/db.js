@@ -392,6 +392,24 @@ const initDb = async () => {
       [hashPassword('user')]
     );
 
+    // Reset default stylist photo URLs to their unsplash links if they are currently using local uploads path or are null
+    await pool.query(
+      `UPDATE users SET profile_photo_url = $1 WHERE email = 'jessica@trendtrim.com' AND (profile_photo_url LIKE '/uploads/%' OR profile_photo_url IS NULL OR profile_photo_url LIKE '%luxebook%')`,
+      ['https://images.unsplash.com/photo-1594744803329-e58b31de215f?auto=format&fit=crop&w=150&q=80']
+    );
+    await pool.query(
+      `UPDATE users SET profile_photo_url = $1 WHERE email = 'david@trendtrim.com' AND (profile_photo_url LIKE '/uploads/%' OR profile_photo_url IS NULL OR profile_photo_url LIKE '%luxebook%')`,
+      ['https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=150&q=80']
+    );
+    await pool.query(
+      `UPDATE users SET profile_photo_url = $1 WHERE email = 'priya@trendtrim.com' AND (profile_photo_url LIKE '/uploads/%' OR profile_photo_url IS NULL OR profile_photo_url LIKE '%luxebook%')`,
+      ['https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80']
+    );
+    await pool.query(
+      `UPDATE users SET profile_photo_url = $1 WHERE email = 'alex@trendtrim.com' AND (profile_photo_url LIKE '/uploads/%' OR profile_photo_url IS NULL OR profile_photo_url LIKE '%luxebook%')`,
+      ['https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80']
+    );
+
     console.log('✅ Admin and demo accounts ready');
 
     // ── SEED: Service Categories ──────────────────────────────────────────────
