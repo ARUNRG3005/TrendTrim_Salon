@@ -382,6 +382,16 @@ const initDb = async () => {
       ['user@trendtrim.com', hashPassword('user'), 'Demo User', platId]
     );
 
+    // Self-healing: Update users with placeholder migration hashes to valid backend hashes
+    await pool.query(
+      `UPDATE users SET password_hash = $1 WHERE email = 'admin@trendtrim.com' AND password_hash = 'PENDING_BACKEND_HASH'`,
+      [hashPassword('admin')]
+    );
+    await pool.query(
+      `UPDATE users SET password_hash = $1 WHERE email = 'user@trendtrim.com' AND password_hash = 'PENDING_BACKEND_HASH'`,
+      [hashPassword('user')]
+    );
+
     console.log('✅ Admin and demo accounts ready');
 
     // ── SEED: Service Categories ──────────────────────────────────────────────
@@ -535,6 +545,11 @@ const initDb = async () => {
       let userId;
       if (existUser.rows.length > 0) {
         userId = existUser.rows[0].id;
+        // Self-healing: if the user exists but has the placeholder migration hash, update it
+        await pool.query(
+          `UPDATE users SET password_hash = $1 WHERE id = $2 AND password_hash = 'PENDING_BACKEND_HASH'`,
+          [stylistPass, userId]
+        );
       } else {
         const uRes = await pool.query(
           `INSERT INTO users (email, password_hash, name, role, status, profile_photo_url, phone)
