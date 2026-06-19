@@ -1137,7 +1137,7 @@ app.get('/api/admin/analytics', adminAuth, async (req, res) => {
       LEFT JOIN services sv ON bs.service_id = sv.id
       WHERE b.deleted_at IS NULL
       GROUP BY b.id, u.email, u.name, su.name,
-               b.appointment_date, b.appointment_time, b.status, b.total_price
+               b.appointment_date, b.appointment_time, b.status, b.total_price, b.created_at
       ORDER BY b.created_at DESC
       LIMIT 5
     `);
