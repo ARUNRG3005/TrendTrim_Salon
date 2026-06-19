@@ -132,8 +132,8 @@ export default function Admin() {
   };
 
   // Fetch Data from DB — each endpoint is independently resilient
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     const headers = getHeaders();
 
     // 1. Analytics — try first, but don't block if it 500s
@@ -215,13 +215,13 @@ export default function Admin() {
       if (r.ok) setAuditLogs(await r.json());
     } catch (e) { console.warn('[Admin] audit-logs fetch failed'); }
 
-    setLoading(false);
+    if (showLoader) setLoading(false);
   };
 
   // Auto-refresh every 30 seconds so new bookings appear without page reload
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
+    fetchData(true);
+    const interval = setInterval(() => fetchData(false), 30000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
