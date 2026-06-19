@@ -2134,7 +2134,7 @@ export default function Admin() {
                 )}
                 {specialistForm.profile_photo_url && (
                   <div className="mt-sm w-full h-32 rounded-xl overflow-hidden border border-[var(--border)] relative bg-zinc-900">
-                    <img src={specialistForm.profile_photo_url} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={getImageUrl(specialistForm.profile_photo_url)} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
@@ -2293,7 +2293,7 @@ export default function Admin() {
                 )}
                 {editingSpecialist.profile_photo_url && (
                   <div className="mt-sm w-full h-32 rounded-xl overflow-hidden border border-[var(--border)] relative bg-zinc-900">
-                    <img src={editingSpecialist.profile_photo_url} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={getImageUrl(editingSpecialist.profile_photo_url)} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
